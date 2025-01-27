@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     Int            @id @default(autoincrement())
+  email                  String         @unique
+  username               String         @unique
+  password               String
+  name                   String
+  avatarUrl              String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  sentFriendRequests     Friend[]       @relation("SentFriendRequests")
+  receivedFriendRequests Friend[]       @relation("ReceivedFriendRequests")
+  refreshtokens          RefreshToken[]
+  messageSent            Message[]      @relation("SentMessage")
+  messageReceived        Message[]      @relation("ReceivedMessage")
+}
+
+model Friend {
+  id         Int        @id @default(autoincrement())
+  sender     User       @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId   Int
+  receiver   User       @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId Int
+  createdAt  DateTime   @default(now())
+  status     StatusType @default(PENDING)
+
+  @@unique([senderId, receiverId]) // Composite primary key
+}
+
+enum StatusType {
+  PENDING
+  ACCEPT
+  REJECT
+  BLOCK
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  user      User     @relation(fields: [userid], references: [id], onDelete: Cascade) // Cascade delete
+  userid    Int
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  sender     User     @relation("SentMessage", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId   Int
+  receiver   User     @relation("ReceivedMessage", fields: [receiverId], references: [id], onDelete: Cascade)
+  receiverId Int
+  message    String?
+  fileUrl    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
