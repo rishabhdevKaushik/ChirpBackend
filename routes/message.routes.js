@@ -1,38 +1,88 @@
 import express from "express";
-import upload from "../config/multer.config.js";
 import { authenticateToken } from "../middlewares/auth.middleware.js";
 import {
+    addReaction,
+    addUserToGroupChat,
+    createChat,
     deleteMessage,
+    editMessage,
+    getUnreadMessageCount,
+    leaveChat,
+    markAsRead,
     receiveMessages,
-    seeAllMessages,
+    removeReaction,
+    removeUserFromGroupChat,
+    retrieveChats,
+    searchMessages,
     sendMessage,
-    updateMessage,
+    togglePinMessage,
+    typingIndicator,
+    uploadAttachments,
 } from "../controllers/message.controller.js";
 
 const messageRouter = express.Router();
 
+// Create Chats
+messageRouter.post("/chats", authenticateToken, createChat);
+
+// Retrieve Chats
+messageRouter.get("/chats", authenticateToken, retrieveChats);
+
+// Fetch Unread Message Count
+messageRouter.get("/unread", authenticateToken, getUnreadMessageCount);
+
 // Send message
-messageRouter.post(
-    "/sendtouser",
-    [authenticateToken, upload.single("file")],
-    sendMessage
-    
-);
+messageRouter.post("/send", authenticateToken, sendMessage);
 
-// Receive message
-messageRouter.post("/receive", authenticateToken, receiveMessages);
+// Mark as read
+messageRouter.put("/:messageId/read", authenticateToken, markAsRead);
 
-// See all message
-messageRouter.post("/seeall", authenticateToken, seeAllMessages);
-
-// Update message
-messageRouter.post(
-    "/update",
-    [authenticateToken, upload.single("file")],
-    updateMessage
-);
+// Edit message
+messageRouter.put("/:messageId", authenticateToken, editMessage);
 
 // Delete message
-messageRouter.post("/delete", authenticateToken, deleteMessage);
+messageRouter.delete("/:messageId", authenticateToken, deleteMessage);
+
+// Typing Indicator
+messageRouter.put("/:chatId/typing", authenticateToken, typingIndicator);
+
+// Pin/Unpin a Message
+messageRouter.put("/:messageId/pin", authenticateToken, togglePinMessage);
+
+// Search Messages
+messageRouter.get("/search", authenticateToken, searchMessages);
+
+// Leave Chat (For Group Chats)
+messageRouter.delete("/:chatId/leave", authenticateToken, leaveChat);
+
+// Add Users to Group Chat
+messageRouter.post(
+    "/:chatId/participants",
+    authenticateToken,
+    addUserToGroupChat
+);
+
+// Remove Users from Group Chat
+messageRouter.delete(
+    "/:chatId/participants",
+    authenticateToken,
+    removeUserFromGroupChat
+);
+
+// Add reaction to Message
+messageRouter.post("/:messageId/react", authenticateToken, addReaction);
+
+// Remove reaction to Message
+messageRouter.delete(
+    "/:messageId/react/:reactionId",
+    authenticateToken,
+    removeReaction
+);
+
+// Upload attachments
+messageRouter.post("/upload", authenticateToken, uploadAttachments);
+
+// Receive message
+messageRouter.get("/:chatId", authenticateToken, receiveMessages);
 
 export default messageRouter;

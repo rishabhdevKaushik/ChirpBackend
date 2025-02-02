@@ -1,9 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
-const JWT_SECRET = process.env.JWT_SECRET_KEY;
-const JWT_REFRESH = process.env.JWT_REFRESH_KEY;
+import prismaPostgres from "../config/prismaPostgres.config.js";
 
 // Send friend request
 export const sendFriendRequest = async (req, res) => {
@@ -17,7 +12,7 @@ export const sendFriendRequest = async (req, res) => {
         }
 
         // Look up the user by username
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: {
                 username: username,
             },
@@ -30,7 +25,7 @@ export const sendFriendRequest = async (req, res) => {
         const receiverId = user.id;
 
         // Check for existing relation
-        const existingRelation = await prisma.friend.findFirst({
+        const existingRelation = await prismaPostgres.friend.findFirst({
             where: {
                 OR: [
                     {
@@ -49,7 +44,7 @@ export const sendFriendRequest = async (req, res) => {
             return res.status(400).json({ status: "Could not send request" });
         }
 
-        const newFriend = await prisma.friend.create({
+        const newFriend = await prismaPostgres.friend.create({
             data: {
                 senderId,
                 receiverId,
@@ -77,7 +72,7 @@ export const updateFriendStatus = async (req, res) => {
         }
 
         // Look up the user by username
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: {
                 username: username,
             },
@@ -92,7 +87,7 @@ export const updateFriendStatus = async (req, res) => {
         const receiver = user.id;
 
         // Check for existing relation
-        const existingRelation = await prisma.friend.findFirst({
+        const existingRelation = await prismaPostgres.friend.findFirst({
             where: {
                 OR: [
                     {
@@ -121,7 +116,7 @@ export const updateFriendStatus = async (req, res) => {
             existingRelation.receiverId === receiver
         ) {
             // The relation is sender -> receiver, we can update this relation
-            updatedRelation = await prisma.friend.update({
+            updatedRelation = await prismaPostgres.friend.update({
                 where: {
                     senderId_receiverId: {
                         senderId: sender,
@@ -135,7 +130,7 @@ export const updateFriendStatus = async (req, res) => {
             existingRelation.receiverId === sender
         ) {
             // The relation is receiver -> sender, we can update this relation
-            updatedRelation = await prisma.friend.update({
+            updatedRelation = await prismaPostgres.friend.update({
                 where: {
                     senderId_receiverId: {
                         senderId: receiver,
@@ -168,7 +163,7 @@ export const blockUser = async (req, res) => {
         }
 
         // Look up the user by username
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: {
                 username: username,
             },
@@ -181,7 +176,7 @@ export const blockUser = async (req, res) => {
         const receiverId = user.id;
 
         // Check for existing relation
-        const existingRelation = await prisma.friend.findUnique({
+        const existingRelation = await prismaPostgres.friend.findUnique({
             where: {
                 senderId_receiverId: {
                     senderId: senderId,
@@ -193,7 +188,7 @@ export const blockUser = async (req, res) => {
         let updatedRelation;
         if (existingRelation) {
             // The relation is sender -> receiver, we can update this relation
-            updatedRelation = await prisma.friend.update({
+            updatedRelation = await prismaPostgres.friend.update({
                 where: {
                     senderId_receiverId: {
                         senderId: senderId,
@@ -203,13 +198,33 @@ export const blockUser = async (req, res) => {
                 data: { status: "BLOCK" },
             });
         } else {
-            updatedRelation = await prisma.friend.create({
+            updatedRelation = await prismaPostgres.friend.create({
                 data: {
                     senderId,
                     receiverId,
                     status: "BLOCK",
                 },
             });
+        }
+
+        // Check if other user has sent req
+        const reqToDelete = await prismaPostgres.friend.findUnique({
+            where: {
+                senderId_receiverId: {
+                    senderId: receiverId,
+                    receiverId: senderId,
+                },
+            },
+        });
+
+        // Delete if other user has sent req
+        if (reqToDelete) {
+            const deleteedRequestByOtherUser =
+                await prismaPostgres.friend.delete({
+                    where: {
+                        id: reqToDelete.id, // Delete by the unique ID of the existing relation
+                    },
+                });
         }
 
         return res.status(200).json({
@@ -234,7 +249,7 @@ export const unblockUser = async (req, res) => {
         }
 
         // Look up the user by username
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: {
                 username: username,
             },
@@ -247,7 +262,7 @@ export const unblockUser = async (req, res) => {
         const receiverId = user.id;
 
         // Check for existing relation
-        const existingRelation = await prisma.friend.findFirst({
+        const existingRelation = await prismaPostgres.friend.findFirst({
             where: {
                 senderId: senderId,
                 receiverId: receiverId,
@@ -262,7 +277,7 @@ export const unblockUser = async (req, res) => {
         }
 
         // Delete the block relationship
-        const updatedRelation = await prisma.friend.delete({
+        const updatedRelation = await prismaPostgres.friend.delete({
             where: {
                 id: existingRelation.id, // Delete by the unique ID of the existing relation
             },
@@ -284,7 +299,7 @@ export const listBlocked = async (req, res) => {
     try {
         const senderId = req.user.userId; // Get the senderId from the authentication token
 
-        const blockedUsers = await prisma.friend.findMany({
+        const blockedUsers = await prismaPostgres.friend.findMany({
             where: { senderId: senderId, status: "BLOCK" },
             select: {
                 receiver: {
@@ -312,7 +327,7 @@ export const listPendingRequests = async (req, res) => {
     try {
         const senderId = req.user.userId; //got this from authentication token
 
-        const pendingRequests = await prisma.friend.findMany({
+        const pendingRequests = await prismaPostgres.friend.findMany({
             where: { receiverId: senderId, status: "PENDING" },
             select: {
                 // senderId: true,
@@ -341,7 +356,7 @@ export const listFriends = async (req, res) => {
     try {
         const userId = req.user.userId; // Extracted from authentication token
 
-        const friends = await prisma.friend.findMany({
+        const friends = await prismaPostgres.friend.findMany({
             where: {
                 OR: [
                     { senderId: userId, status: "ACCEPT" },

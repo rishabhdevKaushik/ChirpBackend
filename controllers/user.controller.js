@@ -1,22 +1,17 @@
-import { PrismaClient } from "@prisma/client";
 import cloudinary from "../config/cloudinary.config.js";
 import removeFile from "../utility/removeFile.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../middlewares/auth.middleware.js";
 import jwt from "jsonwebtoken";
-
-const prisma = new PrismaClient();
-
-const JWT_SECRET = process.env.JWT_SECRET_KEY;
-const JWT_REFRESH = process.env.JWT_REFRESH_KEY;
+import prismaPostgres from "../config/prismaPostgres.config.js";
 
 // Create user
 export const createUser = async (req, res) => {
-    const { email, name, username, password, confirmPassword } = req.body;
-
     try {
+        const { email, name, username, password, confirmPassword } = req.body;
+
         const avatarPath = req.file ? req.file.path : null;
-        // console.log(avatarPath);
+
         if (password !== confirmPassword) {
             return res.status(400).json({ message: "Passwords do not match" });
         }
@@ -35,7 +30,7 @@ export const createUser = async (req, res) => {
                   })
             : undefined;
 
-        const user = await prisma.user.create({
+        const user = await prismaPostgres.user.create({
             data: {
                 email,
                 name,
@@ -60,10 +55,16 @@ export const createUser = async (req, res) => {
 
 // Update user
 export const updateUser = async (req, res) => {
-    const { password } = req.body;
-    const { newName, newUsername, newEmail, newPassword, confirmNewPassword } =
-        req.body;
     try {
+        const { password } = req.body;
+        const {
+            newName,
+            newUsername,
+            newEmail,
+            newPassword,
+            confirmNewPassword,
+        } = req.body;
+
         const avatarPath = req.file ? req.file.path : null;
         // console.log(avatarPath);
 
@@ -73,7 +74,7 @@ export const updateUser = async (req, res) => {
         }
 
         // Check username and password
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: { id: req.user.userId },
         });
 
@@ -109,7 +110,7 @@ export const updateUser = async (req, res) => {
                   })
             : undefined;
 
-        const updatedUser = await prisma.user.update({
+        const updatedUser = await prismaPostgres.user.update({
             where: {
                 id: req.user.userId,
             },
@@ -143,7 +144,7 @@ export const deleteUser = async (req, res) => {
         const { password } = req.body;
 
         // Check username and password
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: { id: req.user.userId },
         });
         if (!user) {
@@ -155,7 +156,7 @@ export const deleteUser = async (req, res) => {
         }
 
         // Delete user
-        const deletedUser = await prisma.user.delete({
+        const deletedUser = await prismaPostgres.user.delete({
             where: {
                 id: req.user.userId,
             },
@@ -174,10 +175,10 @@ export const deleteUser = async (req, res) => {
 
 // Login
 export const loginUser = async (req, res) => {
-    const { username, password } = req.body;
-
     try {
-        const user = await prisma.user.findUnique({
+        const { username, password } = req.body;
+
+        const user = await prismaPostgres.user.findUnique({
             where: { username: username },
         });
         if (!user) {
@@ -195,7 +196,7 @@ export const loginUser = async (req, res) => {
         const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
 
         // Store hashed refresh token record
-        await prisma.refreshToken.create({
+        await prismaPostgres.refreshToken.create({
             data: {
                 token: hashedRefreshToken,
                 userid: user.id,
@@ -220,9 +221,8 @@ export const loginUser = async (req, res) => {
 
 // Logout
 export const logoutUser = async (req, res) => {
-
     try {
-        const refreshToken = req.cookies?.refreshToken;
+        const { refreshToken } = req.cookies;
 
         if (!refreshToken) {
             return res.status(400).json({ message: "No refresh token found" });
@@ -236,7 +236,7 @@ export const logoutUser = async (req, res) => {
         });
 
         // Remove the refresh token from the database
-        await prisma.refreshToken.deleteMany({
+        await prismaPostgres.refreshToken.deleteMany({
             where: { token: await bcrypt.hash(refreshToken, 10) },
         });
 
@@ -259,7 +259,7 @@ export const findUser = async (req, res) => {
         }
 
         // Look up the user by username
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: {
                 username: username,
             },
@@ -271,7 +271,7 @@ export const findUser = async (req, res) => {
         }
 
         // Check if the user blocked the sender
-        const blockedRelation = await prisma.friend.findFirst({
+        const blockedRelation = await prismaPostgres.friend.findFirst({
             where: {
                 senderId: user.id,
                 receiverId: senderId,
@@ -304,7 +304,7 @@ export const findUser = async (req, res) => {
 // refreshTokens
 export const refreshAccessToken = async (req, res) => {
     try {
-        const { refreshToken } = req.cookies; 
+        const { refreshToken } = req.cookies;
 
         if (!refreshToken) {
             return res
@@ -313,15 +313,13 @@ export const refreshAccessToken = async (req, res) => {
         }
 
         // Find the hashed token in the database
-        const tokenRecord = await prisma.refreshToken.findFirst({
+        const tokenRecord = await prismaPostgres.refreshToken.findFirst({
             where: { userId: jwt.decode(refreshToken).userid },
         });
-        
 
         if (!tokenRecord) {
             return res.status(403).json({ message: "Invalid refresh token" });
         }
-        
 
         // Validate the refresh token
         try {
@@ -331,10 +329,10 @@ export const refreshAccessToken = async (req, res) => {
         }
 
         // Generate a new access token
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: { id: tokenRecord.userid },
         });
-        
+
         const newAccessToken = jwt.sign(
             { userId: user.id },
             process.env.JWT_SECRET_KEY,
@@ -347,5 +345,3 @@ export const refreshAccessToken = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
-
-

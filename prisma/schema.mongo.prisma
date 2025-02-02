@@ -1,0 +1,38 @@
+// schema.mongodb.prisma
+
+generator client {
+    provider = "prisma-client-js"
+    output   = "./generated/mongodb-client" // Use a different output path for MongoDB
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("MONGODB_URL")
+}
+
+model Message {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    senderId    String   @db.ObjectId
+    chatId      String   @db.ObjectId
+    content     String
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+    attachments Json?
+    readBy      String[] @db.ObjectId
+    metadata    Json?
+}
+
+model Chat {
+    id            String   @id @default(auto()) @map("_id") @db.ObjectId
+    type          ChatType
+    participants  String[] @db.ObjectId // List of user IDs participating in the chat
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+    lastMessageId String?  @db.ObjectId // Reference to the last message in this chat
+    metadata      Json? // Additional data like chat name or settings
+}
+
+enum ChatType {
+    ONE_ON_ONE
+    GROUP
+}
