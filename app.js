@@ -2,14 +2,18 @@ import express from "express";
 import "dotenv/config";
 import userRouter from "./routes/user.routes.js";
 import friendreqRouter from "./routes/friendreq.routes.js";
+import chatRouter from "./routes/chat.routes.js";
 import messageRouter from "./routes/message.routes.js";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { createServer } from "http";  // Import createServer from 'http'
 import { Server } from "socket.io";  // Ensure Server is imported from socket.io
+import connectDB from "./config/mongo.config.js";
+
 
 const PORT = process.env.PORTNUMBER;
 
+connectDB(); // Connecting to mongoDB server for messages 
 const app = express();
 app.use(express.json()); // To read JSON
 app.use(cookieParser()); // To parse cookies
@@ -33,7 +37,10 @@ app.use((req, res, next) => {
 // Routes
 app.use("/api/user", userRouter);
 app.use("/api/friendreq", friendreqRouter);
+app.use("/api/chat", chatRouter);
 app.use("/api/message", messageRouter);
+
+
 // Socket.IO connection handler
 io.on("connection", (socket) => {
     console.log("A user connected:", socket.id);

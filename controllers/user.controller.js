@@ -242,7 +242,7 @@ export const logoutUser = async (req, res) => {
 
         return res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
-        console.error("Logout error:", error);
+        console.log("Logout error:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -341,7 +341,7 @@ export const refreshAccessToken = async (req, res) => {
 
         return res.status(200).json({ accessToken: newAccessToken });
     } catch (error) {
-        console.error("Error refreshing access token:", error);
+        console.log("Error refreshing access token:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };

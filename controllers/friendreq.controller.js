@@ -304,10 +304,9 @@ export const listBlocked = async (req, res) => {
             select: {
                 receiver: {
                     select: {
-                        id: true,
                         email: true,
                         username: true,
-                        name: true, // Include name in the selection
+                        name: true,
                     },
                 },
             },
@@ -333,9 +332,9 @@ export const listPendingRequests = async (req, res) => {
                 // senderId: true,
                 sender: {
                     select: {
-                        id: true,
-                        email: true,
+                        name: true,
                         username: true,
+                        email: true,
                     },
                 },
                 // receiverId: true, // Receiver is person checking requests
