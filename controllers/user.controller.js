@@ -176,10 +176,10 @@ export const deleteUser = async (req, res) => {
 // Login
 export const loginUser = async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { identifier, password } = req.body;
 
-        const user = await prismaPostgres.user.findUnique({
-            where: { username: username },
+        const user = await prismaPostgres.user.findFirst({
+            where: { OR: [{ username: identifier }, { email: identifier }] },
         });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -228,16 +228,37 @@ export const logoutUser = async (req, res) => {
             return res.status(400).json({ message: "No refresh token found" });
         }
 
+        // Gets all tokens for current user
+        const existingTokens = await prismaPostgres.refreshToken.findMany({
+            where: { userid: req.user.userId },
+        });
+
+        if (!existingTokens || existingTokens.length === 0) {
+            return res
+                .status(400)
+                .json({ message: "Could not get refresh token from database" });
+        }
+
+        // Compare provided token with each hashed token in the database
+        const matchingToken = existingTokens.find((tokenEntry) =>
+            bcrypt.compareSync(refreshToken, tokenEntry.token)
+        );
+
+        if (!matchingToken) {
+            return res.status(400).json({ message: "Invalid refresh token" });
+        }
+
+        // Update isRevoked to true
+        await prismaPostgres.refreshToken.update({
+            where: { id: matchingToken.id }, // Use ID to update the correct record
+            data: { isRevoked: true },
+        });
+
         // Clear the cookie
         res.clearCookie("refreshToken", {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "Strict",
-        });
-
-        // Remove the refresh token from the database
-        await prismaPostgres.refreshToken.deleteMany({
-            where: { token: await bcrypt.hash(refreshToken, 10) },
         });
 
         return res.status(200).json({ message: "Logged out successfully" });

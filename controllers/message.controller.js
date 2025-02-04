@@ -73,3 +73,80 @@ export const getMessagesOfChat = async (req, res) => {
         return res.status(500).json({ message: "Failed to fetch messages." });
     }
 };
+
+// Edit message
+export const editMessage = async (req, res) => {
+    try {
+        const { content, messageId } = req.body;
+        const senderId = req.user.userId; //got this from authentication token
+
+        if (!messageId || !content) {
+            return res(400).send({
+                message: "Message id or content is missing",
+            });
+        }
+
+        // Fetch the message details using messageId
+        const message = await Message.findById(messageId);
+
+        if (!message || message.sender !== senderId) {
+            return res
+                .status(400)
+                .json({ message: "Could not perform this action" });
+        }
+
+        var updatedMessage = await Message.findByIdAndUpdate(
+            messageId,
+            {
+                content,
+            },
+            {
+                new: true,
+            }
+        );
+
+        updatedMessage = await updatedMessage.populate("chat");
+
+        // Update latest message in chat
+        await Chat.findByIdAndUpdate(updatedMessage.chat._id, {
+            latestMessage: updatedMessage,
+        });
+
+        return res.status(201).json(updatedMessage);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Failed to edit message." });
+    }
+};
+
+// Delete message
+export const deleteMessage = async (req, res) => {
+    try {
+        const { messageId } = req.params;
+        const senderId = req.user.userId; //got this from authentication token
+
+        if (!messageId) {
+            return res(400).send({
+                message: "Message id is missing",
+            });
+        }
+
+        // Fetch the message details using messageId
+        const message = await Message.findById(messageId);
+
+        if (!message || message.sender !== senderId) {
+            return res
+                .status(400)
+                .json({ message: "Could not perform this action" });
+        }
+
+        var deletedMessage = await Message.findByIdAndDelete(messageId);
+
+        return res
+            .status(201)
+            .send({ message: "Message deleted successfully", deletedMessage });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Failed to delete message." });
+    }
+};
