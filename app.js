@@ -17,13 +17,20 @@ connectDB(); // Connecting to mongoDB server for messages
 const app = express();
 app.use(express.json()); // To read JSON
 app.use(cookieParser()); // To parse cookies
+app.use(
+    cors({
+        origin: "*",
+        credentials: true, // Allow credentials like cookies
+        methods: ["GET", "POST", "PUT", "DELETE"],
+    })
+);
 
 // Create HTTP server and Socket.IO instance
 const httpServer = createServer(app); // Now this works since createServer is imported
 const io = new Server(httpServer, {
     pingTimeout: 60000, // Ends connection after 60s of no requests
     cors: {
-        origin: "http://localhost:3000",
+        origin: "*",
         credentials: true, // Allow credentials like cookies
         methods: ["GET", "POST", "PUT", "DELETE"],
     },
