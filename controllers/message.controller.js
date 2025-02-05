@@ -68,7 +68,7 @@ export const sendMessage = async (req, res) => {
 
         return res.status(201).json(filteredMessage);
     } catch (error) {
-        console.log(error);
+        console.log(`Error while sending message: ${error}`);
         return res.status(500).json({ message: "Failed to send message." });
     }
 };
@@ -105,7 +105,7 @@ export const getMessagesOfChat = async (req, res) => {
 
         return res.status(200).json(populatedMessages);
     } catch (error) {
-        console.log(error);
+        console.log(`Error while fetching messages: ${error}`);
         return res.status(500).json({ message: "Failed to fetch messages." });
     }
 };
@@ -162,7 +162,7 @@ export const editMessage = async (req, res) => {
 
         return res.status(201).json(filteredMessage);
     } catch (error) {
-        console.log(error);
+        console.log(`Error while editing message: ${error}`);
         return res.status(500).json({ message: "Failed to edit message." });
     }
 };
@@ -194,7 +194,7 @@ export const deleteMessage = async (req, res) => {
             .status(201)
             .send({ message: "Message deleted successfully", deletedMessage });
     } catch (error) {
-        console.log(error);
+        console.log(`Error while deleting message: ${error}`);
         return res.status(500).json({ message: "Failed to delete message." });
     }
 };

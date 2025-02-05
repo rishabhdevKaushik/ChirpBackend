@@ -50,16 +50,16 @@ app.use("/api/message", messageRouter);
 
 // Socket.IO connection handler
 io.on("connection", (socket) => {
-    console.log("A user connected:", socket.id);
+    // console.log("A user connected:", socket.id);
 
-    socket.on("setup", (userData) => {
-        socket.join(userData.id);
+    socket.on("setup", (userId) => {
+        socket.join(userId);
         socket.emit("connected");
     });
 
     socket.on("join chat", (room) => {
         socket.join(room);
-        console.log(`User joined room: ${room}`);
+        // console.log(`User joined room: ${room}`);
     });
 
     socket.on("new message", (newMessageRecieved) => {
@@ -77,13 +77,13 @@ io.on("connection", (socket) => {
     socket.on("typing", (room) => socket.in(room).emit("typing"));
     socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
     socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
+        // console.log("User disconnected:", socket.id);
     });
 });
 
 // Start the server
 httpServer.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    // console.log(`Server is running on port ${PORT}`);
 });
 
 export { io };

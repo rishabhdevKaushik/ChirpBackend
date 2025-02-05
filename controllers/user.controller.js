@@ -29,7 +29,7 @@ export const createUser = async (req, res) => {
                       resource_type: "image",
                   })
                   .catch((error) => {
-                      console.log(error);
+                      console.log(`Error while uploading avatar: ${error}`);
                   })
             : undefined;
 
@@ -58,6 +58,13 @@ export const createUser = async (req, res) => {
         });
         if (user) {
             const token = generateToken(user);
+            // Set the refresh token as an HTTP-only cookie
+            res.cookie("refreshToken", token.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+                sameSite: "Strict",
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            });
             return res
                 .status(201)
                 .json({ currentUser, accessToken: token.accessToken });
@@ -81,7 +88,6 @@ export const updateUser = async (req, res) => {
         } = req.body;
 
         const avatarPath = req.file ? req.file.path : null;
-        // console.log(avatarPath);
 
         // Check if username and password are provided
         if (!password) {
@@ -121,7 +127,7 @@ export const updateUser = async (req, res) => {
                       resource_type: "image",
                   })
                   .catch((error) => {
-                      console.log(error);
+                      console.log(`Error while uploading avatar: ${error}`);
                   })
             : undefined;
 
@@ -240,7 +246,7 @@ export const loginUser = async (req, res) => {
 
         return res.status(201).json({ accessToken, currentUser });
     } catch (error) {
-        console.log(error);
+        console.log(`Error while logging in: ${error}`);
         res.status(501).json({ status: "Login failed" });
     }
 };
@@ -289,7 +295,7 @@ export const logoutUser = async (req, res) => {
 
         return res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
-        console.log("Logout error:", error);
+        console.log(`Error while Logging out: ${error}`);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
@@ -354,7 +360,6 @@ export const authAccessToken = async (req, res) => {
     try {
         const { refreshToken } = req.cookies;
         const authHeader = req.headers.authorization || "";
-        console.log("Authorization Header:", authHeader);
 
         const accessToken = authHeader.startsWith("Bearer ")
             ? authHeader.split(" ")[1]
@@ -402,7 +407,9 @@ export const authAccessToken = async (req, res) => {
         });
 
         if (!tokenRecord) {
-            return res.status(403).json({ message: "Invalid refresh token, Log in again" });
+            return res
+                .status(403)
+                .json({ message: "Invalid refresh token, Log in again" });
         }
 
         // Generate a new access token

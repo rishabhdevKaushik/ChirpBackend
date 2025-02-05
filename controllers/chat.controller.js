@@ -136,7 +136,7 @@ export const createGroupChat = async (req, res) => {
 
         return res.status(200).send(groupChat);
     } catch (error) {
-        console.log(error);
+        console.log(`Error while creating group chat: ${error}`);
         return res
             .status(500)
             .json({ message: "Could not create Group chat." });
@@ -188,7 +188,7 @@ export const updateGroupChat = async (req, res) => {
 
         return res.status(200).send(updatedChat);
     } catch (error) {
-        console.log(error);
+        console.log(`Error while updating group chat: ${error}`);
         return res.status(500).json({ message: "Failed update group chat." });
     }
 };
@@ -240,7 +240,7 @@ export const removeUserFromGroupChat = async (req, res) => {
             chat: updatedChat,
         });
     } catch (error) {
-        console.log(error);
+        console.log(`Error while removeing user from: ${error}`);
         return res
             .status(500)
             .json({ message: "Failed to remove user from the chat." });
