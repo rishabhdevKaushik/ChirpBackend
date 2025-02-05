@@ -43,9 +43,20 @@ export const createUser = async (req, res) => {
             removeFile(avatarPath);
         }
 
+        
+        const currentUser = await prismaPostgres.user.findUnique({
+            where: { id: user.id },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                name: true,
+                avatarUrl: true
+            }
+        });
         if (user) {
             const token = generateToken(user);
-            return res.status(201).json({ user: user, token: token });
+            return res.status(201).json({ currentUser, accessToken: token.accessToken });
         }
     } catch (error) {
         console.log(`Error while creating user\n${error}`);
@@ -204,6 +215,17 @@ export const loginUser = async (req, res) => {
             },
         });
 
+        const currentUser = await prismaPostgres.user.findUnique({
+            where: { id: user.id },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                name: true,
+                avatarUrl: true
+            }
+        });
+
         // Set the refresh token as an HTTP-only cookie
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
@@ -212,7 +234,8 @@ export const loginUser = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
 
-        return res.status(201).json({ accessToken });
+
+        return res.status(201).json({ accessToken , currentUser});
     } catch (error) {
         console.log(error);
         res.status(501).json({ status: "Login failed" });
