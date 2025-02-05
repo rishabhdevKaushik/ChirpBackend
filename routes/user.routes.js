@@ -2,12 +2,12 @@ import express from "express";
 import upload from "../config/multer.config.js";
 import { authenticateToken } from "../middlewares/auth.middleware.js";
 import {
+    authAccessToken,
     createUser,
     deleteUser,
     findUser,
     loginUser,
     logoutUser,
-    refreshAccessToken,
     updateUser,
 } from "../controllers/user.controller.js";
 
@@ -25,13 +25,13 @@ userRouter.delete("/", authenticateToken, deleteUser);
 // Login
 userRouter.post("/login", loginUser);
 
-// Refresh authenticate token
-userRouter.post("/refresh-token", refreshAccessToken);
-
 // Logout
 userRouter.post("/logout", authenticateToken, logoutUser);
 
 // Find users
 userRouter.get("/:username", authenticateToken, findUser);
+
+// Check authentication token validity
+userRouter.post("/authenticate-token", authAccessToken);
 
 export default userRouter;

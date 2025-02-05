@@ -1,7 +1,10 @@
 import cloudinary from "../config/cloudinary.config.js";
 import removeFile from "../utility/removeFile.js";
 import bcrypt from "bcryptjs";
-import { generateToken } from "../middlewares/auth.middleware.js";
+import {
+    authenticateToken,
+    generateToken,
+} from "../middlewares/auth.middleware.js";
 import jwt from "jsonwebtoken";
 import prismaPostgres from "../config/prismaPostgres.config.js";
 
@@ -43,7 +46,6 @@ export const createUser = async (req, res) => {
             removeFile(avatarPath);
         }
 
-        
         const currentUser = await prismaPostgres.user.findUnique({
             where: { id: user.id },
             select: {
@@ -51,12 +53,14 @@ export const createUser = async (req, res) => {
                 email: true,
                 username: true,
                 name: true,
-                avatarUrl: true
-            }
+                avatarUrl: true,
+            },
         });
         if (user) {
             const token = generateToken(user);
-            return res.status(201).json({ currentUser, accessToken: token.accessToken });
+            return res
+                .status(201)
+                .json({ currentUser, accessToken: token.accessToken });
         }
     } catch (error) {
         console.log(`Error while creating user\n${error}`);
@@ -222,8 +226,8 @@ export const loginUser = async (req, res) => {
                 email: true,
                 username: true,
                 name: true,
-                avatarUrl: true
-            }
+                avatarUrl: true,
+            },
         });
 
         // Set the refresh token as an HTTP-only cookie
@@ -234,8 +238,7 @@ export const loginUser = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
 
-
-        return res.status(201).json({ accessToken , currentUser});
+        return res.status(201).json({ accessToken, currentUser });
     } catch (error) {
         console.log(error);
         res.status(501).json({ status: "Login failed" });
@@ -345,47 +348,81 @@ export const findUser = async (req, res) => {
     }
 };
 
-// refreshTokens
-export const refreshAccessToken = async (req, res) => {
+// Check authentication token validity
+
+export const authAccessToken = async (req, res) => {
     try {
         const { refreshToken } = req.cookies;
+        const authHeader = req.headers.authorization || "";
+        console.log("Authorization Header:", authHeader);
 
+        const accessToken = authHeader.startsWith("Bearer ")
+            ? authHeader.split(" ")[1]
+            : null;
+        if (!accessToken) {
+            return res
+                .status(401)
+                .json({ message: "Authentication token required" });
+        }
+
+        //Check if access token is still valid
+        if (accessToken) {
+            try {
+                jwt.verify(accessToken, process.env.JWT_SECRET_KEY);
+                return res
+                    .status(200)
+                    .json({ message: "Access token is still valid" });
+            } catch (error) {
+                // Access token is invalid or expired, proceed to refresh token
+            }
+        }
+
+        // Refresh token validation
         if (!refreshToken) {
             return res
                 .status(400)
                 .json({ message: "No refresh token provided" });
         }
 
-        // Find the hashed token in the database
+        let decoded;
+        try {
+            decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY);
+        } catch (err) {
+            return res
+                .status(403)
+                .json({ message: "Refresh token expired or invalid" });
+        }
+
+        // Find refresh token in DB
         const tokenRecord = await prismaPostgres.refreshToken.findFirst({
-            where: { userId: jwt.decode(refreshToken).userid },
+            where: {
+                userid: decoded.userId,
+                isRevoked: false, // Ensure token is not revoked
+            },
         });
 
         if (!tokenRecord) {
-            return res.status(403).json({ message: "Invalid refresh token" });
-        }
-
-        // Validate the refresh token
-        try {
-            jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY);
-        } catch (err) {
-            return res.status(403).json({ message: "Invalid refresh token" });
+            return res.status(403).json({ message: "Invalid refresh token, Log in again" });
         }
 
         // Generate a new access token
         const user = await prismaPostgres.user.findUnique({
-            where: { id: tokenRecord.userid },
+            where: { id: decoded.userId },
         });
 
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
         const newAccessToken = jwt.sign(
-            { userId: user.id },
+            { userid: user.id },
             process.env.JWT_SECRET_KEY,
-            { expiresIn: "30m" } // Expires in 30 minutes
+            { expiresIn: "30m" } // Access token expiration
         );
 
         return res.status(200).json({ accessToken: newAccessToken });
     } catch (error) {
-        console.log("Error refreshing access token:", error);
+        console.error("Error refreshing access token:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 };
