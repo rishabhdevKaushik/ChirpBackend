@@ -6,10 +6,12 @@ import Message from "../models/message.model.js"; //Mongodb
 export const sendMessage = async (req, res) => {
     try {
         const { chatId, content } = req.body;
-        const senderId = req.user.userId; //got this from authentication token
+        const senderId = req.user.userId; // Got this from authentication token
 
         if (!chatId || !content) {
-            return res(400).send({ message: "Chat id or content is missing" });
+            return res
+                .status(400)
+                .json({ message: "Chat id or content is missing" });
         }
 
         // Fetch the chat details using chatId
@@ -22,7 +24,7 @@ export const sendMessage = async (req, res) => {
         // Extract user ID(s) from the chat
         const chatUserIds = chat.users; // This contains an array of user IDs
 
-        // Assuming you want to check if the sender is blocked by any user in the chat
+        // Check if sender is blocked by any user in the chat
         const relation = await prismaPostgres.friend.findFirst({
             where: {
                 senderId: { in: chatUserIds }, // Match any user in the chat
@@ -37,20 +39,34 @@ export const sendMessage = async (req, res) => {
                 .json({ message: "You are blocked by this user" });
         }
 
+        // Fetch sender details from PostgreSQL
+        const sender = await prismaPostgres.user.findUnique({
+            where: { id: senderId },
+            select: { id: true, username: true, email: true, avatarUrl: true },
+        });
+
+        // Create a new message in MongoDB
         var message = await Message.create({
-            sender: req.user.userId,
+            sender: senderId,
             content,
             chat: chatId,
         });
 
+        // Populate chat details
         message = await message.populate("chat");
 
         // Update latest message in chat
-        await Chat.findByIdAndUpdate(chatId, {
-            latestMessage: message,
-        });
+        await Chat.findByIdAndUpdate(chatId, { latestMessage: message });
 
-        return res.status(201).json(message);
+        // Remove unnecessary fields before sending the response
+        const filteredMessage = {
+            _id: message._id,
+            sender: sender, // Attach sender details instead of just senderId
+            content: message.content,
+            chat: message.chat._id,
+        };
+
+        return res.status(201).json(filteredMessage);
     } catch (error) {
         console.log(error);
         return res.status(500).json({ message: "Failed to send message." });
@@ -63,11 +79,31 @@ export const getMessagesOfChat = async (req, res) => {
         const { chatId } = req.params;
 
         // Fetch messages from MongoDB
-        const messages = await Message.find({
-            chat: chatId,
+        const messages = await Message.find({ chat: chatId });
+
+        // Extract unique sender IDs
+        const senderIds = [...new Set(messages.map((msg) => msg.sender))];
+
+        // Fetch user details from PostgreSQL
+        const users = await prismaPostgres.user.findMany({
+            where: { id: { in: senderIds } },
+            select: { id: true, username: true, email: true, avatarUrl: true },
         });
 
-        return res.status(200).json(messages);
+        // Create a map for quick lookup
+        const userMap = Object.fromEntries(
+            users.map((user) => [user.id, user])
+        );
+
+        // Attach user details to messages and remove unwanted fields
+        const populatedMessages = messages.map(({ _doc }) => ({
+            _id: _doc._id,
+            sender: userMap[_doc.sender] || _doc.sender, // Replace sender ID with user details
+            content: _doc.content,
+            chat: _doc.chat,
+        }));
+
+        return res.status(200).json(populatedMessages);
     } catch (error) {
         console.log(error);
         return res.status(500).json({ message: "Failed to fetch messages." });
@@ -78,10 +114,10 @@ export const getMessagesOfChat = async (req, res) => {
 export const editMessage = async (req, res) => {
     try {
         const { content, messageId } = req.body;
-        const senderId = req.user.userId; //got this from authentication token
+        const senderId = req.user.userId; // Got this from authentication token
 
         if (!messageId || !content) {
-            return res(400).send({
+            return res.status(400).json({
                 message: "Message id or content is missing",
             });
         }
@@ -95,24 +131,36 @@ export const editMessage = async (req, res) => {
                 .json({ message: "Could not perform this action" });
         }
 
+        // Update the message content
         var updatedMessage = await Message.findByIdAndUpdate(
             messageId,
-            {
-                content,
-            },
-            {
-                new: true,
-            }
+            { content },
+            { new: true }
         );
 
+        // Populate chat details
         updatedMessage = await updatedMessage.populate("chat");
 
-        // Update latest message in chat
+        // Fetch sender details from PostgreSQL
+        const sender = await prismaPostgres.user.findUnique({
+            where: { id: senderId },
+            select: { id: true, username: true, email: true, avatarUrl: true },
+        });
+
+        // Update latest message in chat if applicable
         await Chat.findByIdAndUpdate(updatedMessage.chat._id, {
             latestMessage: updatedMessage,
         });
 
-        return res.status(201).json(updatedMessage);
+        // Remove unnecessary fields before sending the response
+        const filteredMessage = {
+            _id: updatedMessage._id,
+            sender: sender, // Attach sender details instead of just senderId
+            content: updatedMessage.content,
+            chat: updatedMessage.chat._id,
+        };
+
+        return res.status(201).json(filteredMessage);
     } catch (error) {
         console.log(error);
         return res.status(500).json({ message: "Failed to edit message." });
