@@ -51,32 +51,36 @@ app.use("/api/message", messageRouter);
 
 // Socket.IO connection handler
 io.on("connection", (socket) => {
+    // When a user sets up their socket connection with their userId
     socket.on("setup", (userId) => {
-        socket.join(userId);
-        socket.emit("connected");
+        socket.join(userId); // Join the userId room
+        
+        socket.emit("connected"); // Emit a connected event back to the client
     });
 
+    // When a user joins a chat
     socket.on("join chat", (chatid) => {
-        socket.join(chatid);
-        socket.emit("connected");
+        socket.join(chatid); // Join the chat room
+        socket.emit("connected"); // Emit a connected event back to the client
     });
 
-
-    socket.on("new message", async (newMessageRecieved) => {
+    // When a new message is received
+    socket.on("new message", async (newMessageReceived) => {
         try {
-            const message = await Message.findById(
-                newMessageRecieved._id
-            ).populate("chat");
+            // Fetch the message from the database
+            const message = await Message.findById(newMessageReceived._id).populate("chat");
 
+            // Check if the message and chat exist
             if (!message || !message.chat) {
                 console.error("Message or chat not found");
                 return;
             }
 
+            // Emit the message to all users in the chat
             message.chat.users.forEach((userid) => {
-                if (!userid) return;
-                // if (userid === message.sender) return;
-
+                // if (!userid || userid.toString() === message.sender.toString()) return; // Skip if no userId or if it's the sender
+                
+                // Emit the message to the user
                 socket.to(userid).emit("message received", message);
             });
         } catch (error) {
@@ -84,10 +88,19 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("typing", (chatid) => socket.in(chatid).emit("typing"));
-    socket.on("stop typing", (chatid) => socket.in(chatid).emit("stop typing"));
+    // Handle typing events
+    socket.on("typing", (chatid) => {
+        socket.in(chatid).emit("typing"); // Emit typing event to the chat room
+    });
 
-    socket.on("disconnect", () => {});
+    socket.on("stop typing", (chatid) => {
+        socket.in(chatid).emit("stop typing"); // Emit stop typing event to the chat room
+    });
+
+    // Handle disconnection
+    socket.on("disconnect", () => {
+        console.log("User  disconnected");
+    });
 });
 
 // Start the server
