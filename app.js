@@ -54,7 +54,6 @@ io.on("connection", (socket) => {
     // When a user sets up their socket connection with their userId
     socket.on("setup", (userId) => {
         socket.join(userId); // Join the userId room
-        
         socket.emit("connected"); // Emit a connected event back to the client
     });
 
@@ -68,8 +67,9 @@ io.on("connection", (socket) => {
     socket.on("newMessage", async (newMessageReceived) => {
         try {
             // Fetch the message from the database
-            const message = await Message.findById(newMessageReceived._id).populate("chat");
-
+            const message = await Message.findById(
+                newMessageReceived._id
+            ).populate("chat");
             // Check if the message and chat exist
             if (!message || !message.chat) {
                 console.error("Message or chat not found");
@@ -78,8 +78,8 @@ io.on("connection", (socket) => {
 
             // Emit the message to all users in the chat
             message.chat.users.forEach((userid) => {
-                // if (!userid || userid.toString() === message.sender.toString()) return; // Skip if no userId or if it's the sender
-                
+                if (!userid || userid.toString() === message.sender.toString()) return; // Skip if no userId or if it's the sender
+                userid = userid.toString();
                 // Emit the message to the user
                 socket.to(userid).emit("messageReceived", message);
             });
@@ -98,9 +98,7 @@ io.on("connection", (socket) => {
     });
 
     // Handle disconnection
-    socket.on("disconnect", () => {
-        // console.log("User  disconnected");
-    });
+    socket.on("disconnect", () => {});
 });
 
 // Start the server
