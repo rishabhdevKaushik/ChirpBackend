@@ -65,7 +65,7 @@ io.on("connection", (socket) => {
     });
 
     // When a new message is received
-    socket.on("new message", async (newMessageReceived) => {
+    socket.on("newMessage", async (newMessageReceived) => {
         try {
             // Fetch the message from the database
             const message = await Message.findById(newMessageReceived._id).populate("chat");
@@ -81,7 +81,7 @@ io.on("connection", (socket) => {
                 // if (!userid || userid.toString() === message.sender.toString()) return; // Skip if no userId or if it's the sender
                 
                 // Emit the message to the user
-                socket.to(userid).emit("message received", message);
+                socket.to(userid).emit("messageReceived", message);
             });
         } catch (error) {
             console.error("Error fetching message:", error);
@@ -93,13 +93,13 @@ io.on("connection", (socket) => {
         socket.in(chatid).emit("typing"); // Emit typing event to the chat room
     });
 
-    socket.on("stop typing", (chatid) => {
-        socket.in(chatid).emit("stop typing"); // Emit stop typing event to the chat room
+    socket.on("stopTyping", (chatid) => {
+        socket.in(chatid).emit("stopTyping"); // Emit stop typing event to the chat room
     });
 
     // Handle disconnection
     socket.on("disconnect", () => {
-        console.log("User  disconnected");
+        // console.log("User  disconnected");
     });
 });
 
