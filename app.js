@@ -93,8 +93,8 @@ io.on("connection", (socket) => {
         socket.in(chatid).emit("typing"); // Emit typing event to the chat room
     });
 
-    socket.on("stop typing", (chatid) => {
-        socket.in(chatid).emit("stop typing"); // Emit stop typing event to the chat room
+    socket.on("stopTyping", (chatid) => {
+        socket.in(chatid).emit("stopTyping"); // Emit stop typing event to the chat room
     });
 
     // Handle disconnection
