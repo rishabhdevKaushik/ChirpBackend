@@ -51,53 +51,43 @@ app.use("/api/message", messageRouter);
 
 // Socket.IO connection handler
 io.on("connection", (socket) => {
-    // console.log("A user connected:", socket.id);
-
     socket.on("setup", (userId) => {
         socket.join(userId);
         socket.emit("connected");
     });
 
-    socket.on("join chat", (room) => {
-        socket.join(room);
-        // console.log(`User joined room: ${room}`);
+    socket.on("join chat", (chatid) => {
+        socket.join(chatid);
+        socket.emit("connected");
     });
+
 
     socket.on("new message", async (newMessageRecieved) => {
         try {
-            // Fetch the message from MongoDB and populate chat + users
             const message = await Message.findById(
                 newMessageRecieved._id
-            ).populate({
-                path: "chat",
-                populate: {
-                    path: "users", // Populate users inside chat
-                    select: "id username", // Fetch only required fields
-                },
-            });
-            // .populate("sender", "id username"); // Populate sender details
+            ).populate("chat");
 
             if (!message || !message.chat) {
                 console.error("Message or chat not found");
                 return;
             }
 
-            // Emit message to all users in the chat
-            message.chat.users.forEach((user) => {
-                if (user.id === message.sender.id) return; // Don't send to sender
+            message.chat.users.forEach((userid) => {
+                if (!userid) return;
+                // if (userid === message.sender) return;
 
-                socket.to(user.id).emit("message received", message);
+                socket.to(userid).emit("message received", message);
             });
         } catch (error) {
             console.error("Error fetching message:", error);
         }
     });
 
-    socket.on("typing", (room) => socket.in(room).emit("typing"));
-    socket.on("stop typing", (room) => socket.in(room).emit("stop typing"));
-    socket.on("disconnect", () => {
-        // console.log("User disconnected:", socket.id);
-    });
+    socket.on("typing", (chatid) => socket.in(chatid).emit("typing"));
+    socket.on("stop typing", (chatid) => socket.in(chatid).emit("stop typing"));
+
+    socket.on("disconnect", () => {});
 });
 
 // Start the server

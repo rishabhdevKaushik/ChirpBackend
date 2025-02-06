@@ -199,9 +199,14 @@ export const loginUser = async (req, res) => {
     try {
         const { identifier, password } = req.body;
 
+        if (!identifier || !password) {
+            return res.status(400).json({ message: "identifier or password is missing" });
+        }
+
         const user = await prismaPostgres.user.findFirst({
             where: { OR: [{ username: identifier }, { email: identifier }] },
         });
+        
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }

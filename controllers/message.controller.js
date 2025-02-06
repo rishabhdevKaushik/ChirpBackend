@@ -52,19 +52,19 @@ export const sendMessage = async (req, res) => {
             chat: chatId,
         });
 
-        // Populate chat details
-        message = await message.populate("chat");
-
+        
         // Update latest message in chat
         await Chat.findByIdAndUpdate(chatId, { latestMessage: message });
-
+        
         // Remove unnecessary fields before sending the response
-        const filteredMessage = {
+        var filteredMessage = {
             _id: message._id,
             sender: sender, // Attach sender details instead of just senderId
             content: message.content,
             chat: message.chat._id,
         };
+        // Populate chat details
+        filteredMessage = await message.populate("chat");
 
         return res.status(201).json(filteredMessage);
     } catch (error) {
