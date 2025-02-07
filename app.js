@@ -11,6 +11,7 @@ import { Server } from "socket.io"; // Ensure Server is imported from socket.io
 import connectDB from "./config/mongo.config.js";
 import "./utility/tokenCleanup.js"; // Cleaning up revoked or expired tokens
 import Message from "./models/message.model.js";
+import prismaPostgres from "./config/prismaPostgres.config.js";
 
 const PORT = process.env.PORTNUMBER;
 
@@ -67,21 +68,43 @@ io.on("connection", (socket) => {
     socket.on("newMessage", async (newMessageReceived) => {
         try {
             // Fetch the message from the database
-            const message = await Message.findById(
-                newMessageReceived._id
-            ).populate("chat");
+            const message = await Message.findById(newMessageReceived._id);
+
+            // Populate chat details
+            await message.populate("chat");
+
             // Check if the message and chat exist
             if (!message || !message.chat) {
                 console.error("Message or chat not found");
                 return;
             }
 
+            // Get sender details
+            const sender = await prismaPostgres.user.findUnique({
+                where: { id: message.sender },
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    avatarUrl: true,
+                },
+            });
+
+            // Construct the filtered message
+            const filteredMessage = {
+                _id: message._id,
+                sender: sender, // Attach sender details instead of just senderId
+                content: message.content,
+                chat: message.chat, // Chat is now populated
+            };
+
             // Emit the message to all users in the chat
             message.chat.users.forEach((userid) => {
-                if (!userid || userid.toString() === message.sender.toString()) return; // Skip if no userId or if it's the sender
+                if (!userid || userid.toString() === message.sender.toString())
+                    return; // Skip if no userId or if it's the sender
                 userid = userid.toString();
                 // Emit the message to the user
-                socket.to(userid).emit("messageReceived", message);
+                socket.to(userid).emit("messageReceived", filteredMessage);
             });
         } catch (error) {
             console.error("Error fetching message:", error);
