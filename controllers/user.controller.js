@@ -1,12 +1,10 @@
 import cloudinary from "../config/cloudinary.config.js";
 import removeFile from "../utility/removeFile.js";
 import bcrypt from "bcryptjs";
-import {
-    authenticateToken,
-    generateToken,
-} from "../middlewares/auth.middleware.js";
+import { generateToken } from "../middlewares/auth.middleware.js";
 import jwt from "jsonwebtoken";
 import prismaPostgres from "../config/prismaPostgres.config.js";
+import { generateAndSendOtp } from "../utility/otpService.js";
 
 // Create user
 export const createUser = async (req, res) => {
@@ -46,29 +44,20 @@ export const createUser = async (req, res) => {
             removeFile(avatarPath);
         }
 
-        const currentUser = await prismaPostgres.user.findUnique({
-            where: { id: user.id },
-            select: {
-                id: true,
-                email: true,
-                username: true,
-                name: true,
-                avatarUrl: true,
-            },
+        // Generate and send OTP
+        await generateAndSendOtp(user.id, email); // Pass user id and email
+
+        // Set an HTTP-only cookie with the user ID for OTP verification (expires in 15 minutes)
+        res.cookie("tempUserId", user.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production", // use secure cookies in production
+            maxAge: 15 * 60 * 1000, // 15 minutes
         });
-        if (user) {
-            const token = generateToken(user);
-            // Set the refresh token as an HTTP-only cookie
-            res.cookie("refreshToken", token.refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production", // Use secure cookies in production
-                sameSite: "Strict",
-                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            });
-            return res
-                .status(201)
-                .json({ currentUser, accessToken: token.accessToken });
-        }
+
+        // Respond with a message to verify OTP; do not generate token yet.
+        res.status(201).json({
+            message: "User created. Please verify the OTP sent to your email.",
+        });
     } catch (error) {
         console.log(`Error while creating user\n${error}`);
         res.status(501).json({ status: "User not created" });
@@ -200,13 +189,15 @@ export const loginUser = async (req, res) => {
         const { identifier, password } = req.body;
 
         if (!identifier || !password) {
-            return res.status(400).json({ message: "identifier or password is missing" });
+            return res
+                .status(400)
+                .json({ message: "identifier or password is missing" });
         }
 
         const user = await prismaPostgres.user.findFirst({
             where: { OR: [{ username: identifier }, { email: identifier }] },
         });
-        
+
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -215,11 +206,27 @@ export const loginUser = async (req, res) => {
             return res.status(404).json({ message: "Wrong password" });
         }
 
+        if (user.isVerified === false) {
+            await generateAndSendOtp(user.id, user.email);
+
+            // Set an HTTP-only cookie with the user ID for OTP verification (expires in 15 minutes)
+            res.cookie("tempUserId", user.id, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production", // use secure cookies in production
+                maxAge: 15 * 60 * 1000, // 15 minutes
+            });
+
+            return res.status(409).send({
+                message:
+                    "User not verified. Otp is sent to email, verify first",
+            });
+        }
+
         // Generate token
-        const { accessToken, refreshToken } = generateToken(user);
+        const token = generateToken(user);
 
         // Hash the refresh token for storage
-        const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+        const hashedRefreshToken = await bcrypt.hash(token.refreshToken, 10);
 
         // Store hashed refresh token record
         await prismaPostgres.refreshToken.create({
@@ -241,15 +248,7 @@ export const loginUser = async (req, res) => {
             },
         });
 
-        // Set the refresh token as an HTTP-only cookie
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production", // Use secure cookies in production
-            sameSite: "Strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
-
-        return res.status(201).json({ accessToken, currentUser });
+        return res.status(201).json({ token, currentUser });
     } catch (error) {
         console.log(`Error while logging in: ${error}`);
         res.status(501).json({ status: "Login failed" });
@@ -360,7 +359,6 @@ export const findUser = async (req, res) => {
 };
 
 // Check authentication token validity
-
 export const authAccessToken = async (req, res) => {
     try {
         const { refreshToken } = req.cookies;

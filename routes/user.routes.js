@@ -10,6 +10,7 @@ import {
     logoutUser,
     updateUser,
 } from "../controllers/user.controller.js";
+import { verifyOtp } from "../controllers/verifyotp.controller.js";
 
 const userRouter = express.Router();
 
@@ -33,5 +34,8 @@ userRouter.get("/:username", authenticateToken, findUser);
 
 // Check authentication token validity
 userRouter.post("/authenticate-token", authAccessToken);
+
+// Verify otp
+userRouter.post("/verifyotp", verifyOtp);
 
 export default userRouter;
