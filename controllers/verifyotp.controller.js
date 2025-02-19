@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import OTP from "../models/otp.model.js";
 import prismaPostgres from "../config/prismaPostgres.config.js";
 import { generateToken } from "../middlewares/auth.middleware.js";
