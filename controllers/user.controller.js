@@ -216,7 +216,7 @@ export const loginUser = async (req, res) => {
             // Set an HTTP-only cookie with the user ID for OTP verification (expires in 15 minutes)
             res.cookie("tempUserId", user.id, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production", // use secure cookies in production
+                secure: process.env.NODE_ENV == "production", // use secure cookies in production
                 sameSite: "None",
                 maxAge: 15 * 60 * 1000, // 15 minutes
             });
@@ -298,7 +298,7 @@ export const logoutUser = async (req, res) => {
         // Clear the cookie
         res.clearCookie("refreshToken", {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: process.env.NODE_ENV == "production",
             sameSite: "Strict",
         });
 
