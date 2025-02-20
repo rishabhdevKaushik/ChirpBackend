@@ -18,7 +18,7 @@ export const verifyOtp = async (req, res) => {
         const otpRecord = await OTP.findOne({
             userId,
             isUsed: false,
-        });
+        }).sort({ createdAt: -1 });
         if (!otpRecord) {
             return res
                 .status(400)

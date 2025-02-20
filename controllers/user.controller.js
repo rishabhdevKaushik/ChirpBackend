@@ -47,7 +47,7 @@ export const createUser = async (req, res) => {
         // Generate and send OTP
         await generateAndSendOtp(user.id, email); // Pass user id and email
 
-        // Set an HTTP-only cookie with the user ID for OTP verification (expires in 15 minutes)
+        // Set cookie with the user ID for OTP verification (expires in 15 minutes)
         res.cookie("tempUserId", user.id, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production", // use secure cookies in production
@@ -207,6 +207,9 @@ export const loginUser = async (req, res) => {
             return res.status(404).json({ message: "Wrong password" });
         }
 
+        console.log(user.isVerified);
+        console.log(typeof(user.isVerified));
+        
         if (user.isVerified === false) {
             await generateAndSendOtp(user.id, user.email);
 
