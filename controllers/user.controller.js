@@ -207,10 +207,10 @@ export const loginUser = async (req, res) => {
             return res.status(404).json({ message: "Wrong password" });
         }
 
-        console.log(user.isVerified);
-        console.log(typeof(user.isVerified));
-        
-        if (user.isVerified === false) {
+        // Convert isVerified to boolean explicitly
+        const isUserVerified = Boolean(user.isVerified);
+
+        if (!isUserVerified) {
             await generateAndSendOtp(user.id, user.email);
 
             // Set an HTTP-only cookie with the user ID for OTP verification (expires in 15 minutes)
