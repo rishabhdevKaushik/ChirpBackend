@@ -51,6 +51,7 @@ export const createUser = async (req, res) => {
         res.cookie("tempUserId", user.id, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production", // use secure cookies in production
+            sameSite: "None",
             maxAge: 15 * 60 * 1000, // 15 minutes
         });
 
@@ -213,6 +214,7 @@ export const loginUser = async (req, res) => {
             res.cookie("tempUserId", user.id, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production", // use secure cookies in production
+                sameSite: "None",
                 maxAge: 15 * 60 * 1000, // 15 minutes
             });
 
