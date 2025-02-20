@@ -50,7 +50,7 @@ export const createUser = async (req, res) => {
         // Set cookie with the user ID for OTP verification (expires in 15 minutes)
         res.cookie("tempUserId", user.id, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production", // use secure cookies in production
+            secure: process.env.NODE_ENV == "production", // use secure cookies in production
             sameSite: "None",
             maxAge: 15 * 60 * 1000, // 15 minutes
         });
