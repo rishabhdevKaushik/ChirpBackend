@@ -366,7 +366,8 @@ export const findUser = async (req, res) => {
 // Check authentication token validity
 export const authAccessToken = async (req, res) => {
     try {
-        const { refreshToken } = req.cookies;
+        // const { refreshToken } = req.cookies;
+        const refreshToken = req.body.refreshToken;
         const authHeader = req.headers.authorization || "";
 
         const accessToken = authHeader.startsWith("Bearer ")
