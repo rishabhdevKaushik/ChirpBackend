@@ -19,9 +19,10 @@ connectDB(); // Connect to MongoDB
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",");
 app.use(
     cors({
-        origin: process.env.CLIENT_URL || "http://localhost:3000",
+        origin: allowedOrigins,
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE"],
     })
