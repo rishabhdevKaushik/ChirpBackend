@@ -304,9 +304,10 @@ export const listBlocked = async (req, res) => {
             select: {
                 receiver: {
                     select: {
-                        email: true,
-                        username: true,
                         name: true,
+                        username: true,
+                        email: true,
+                        avatarUrl: true,
                     },
                 },
             },
@@ -335,6 +336,7 @@ export const listPendingRequests = async (req, res) => {
                         name: true,
                         username: true,
                         email: true,
+                        avatarUrl: true,
                     },
                 },
                 // receiverId: true, // Receiver is person checking requests
@@ -364,40 +366,41 @@ export const listFriends = async (req, res) => {
             },
             include: {
                 sender: {
-                    // Assuming 'sender' is a relation to the User model
                     select: {
-                        id: true,
                         name: true,
-                        username: true, // Include fields you need
+                        username: true,
+                        email: true,
+                        avatarUrl: true,
                     },
                 },
                 receiver: {
-                    // Assuming 'receiver' is a relation to the User model
                     select: {
-                        id: true,
                         name: true,
-                        username: true, // Include fields you need
+                        username: true,
+                        email: true,
+                        avatarUrl: true,
                     },
                 },
             },
         });
 
-        // Frontend
         // Transform the data for better client-side use
         const formattedFriends = friends.map((friend) => {
             if (friend.senderId === userId) {
                 // If the current user is the sender, include receiver info
                 return {
-                    id: friend.receiver.id,
                     name: friend.receiver.name,
+                    email: friend.receiver.email,
                     username: friend.receiver.username,
+                    avatarUrl: friend.receiver.avatarUrl,
                 };
             } else {
                 // If the current user is the receiver, include sender info
                 return {
-                    id: friend.sender.id,
                     name: friend.sender.name,
+                    email: friend.sender.email,
                     username: friend.sender.username,
+                    avatarUrl: friend.sender.avatarUrl,
                 };
             }
         });
