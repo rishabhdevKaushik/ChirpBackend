@@ -53,6 +53,7 @@ export const createUser = async (req, res) => {
             secure: process.env.NODE_ENV == "production", // use secure cookies in production
             sameSite: "None",
             maxAge: 15 * 60 * 1000, // 15 minutes
+            partitioned: true,
         });
 
         // Respond with a message to verify OTP; do not generate token yet.
@@ -219,6 +220,7 @@ export const loginUser = async (req, res) => {
                 secure: process.env.NODE_ENV == "production", // use secure cookies in production
                 sameSite: "None",
                 maxAge: 15 * 60 * 1000, // 15 minutes
+                partitioned: true,
             });
 
             return res.status(409).send({
@@ -300,6 +302,7 @@ export const logoutUser = async (req, res) => {
             httpOnly: true,
             secure: process.env.NODE_ENV == "production",
             sameSite: "Strict",
+            partitioned: true,
         });
 
         return res.status(200).json({ message: "Logged out successfully" });

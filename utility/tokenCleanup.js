@@ -1,8 +1,7 @@
 import cron from "node-cron";
 import prismaPostgres from "../config/prismaPostgres.config.js";
 
-// Schedule cleanup every hour (at minute 0)
-cron.schedule("0 * * * *", async () => {
+async function cleanupTokens() {
     const now = new Date();
 
     try {
@@ -12,9 +11,15 @@ cron.schedule("0 * * * *", async () => {
             },
         });
         console.log(
-            `Expired and revoked refresh tokens cleaned up. Deleted ${result.count} token(s).`
+            `Deleted ${result.count} expired and revoked refresh token(s).`
         );
     } catch (error) {
         console.error("Error during token cleanup:", error);
     }
-});
+}
+
+// Run immediately when server starts
+cleanupTokens();
+
+// Schedule to run every hour
+cron.schedule("0 * * * *", cleanupTokens);

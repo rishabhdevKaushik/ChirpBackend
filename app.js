@@ -18,13 +18,7 @@ connectDB(); // Connect to MongoDB
 
 const app = express();
 app.use(express.json());
-app.use(
-    cookieParser({
-        secure: true,
-        sameSite: "none",
-        partitioned: true,
-    })
-);
+app.use(cookieParser());
 const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",");
 app.use(
     cors({

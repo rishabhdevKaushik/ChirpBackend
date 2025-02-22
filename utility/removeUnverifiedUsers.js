@@ -1,8 +1,8 @@
 import cron from "node-cron";
 import prismaPostgres from "../config/prismaPostgres.config.js";
 
-// Schedule a cron job to run every day at midnight
-cron.schedule("0 0 * * *", async () => {
+// Function to remove unverified users
+async function removeUnverifiedUsers() {
     // Calculate the threshold date (24 hours ago)
     const threshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -21,4 +21,10 @@ cron.schedule("0 0 * * *", async () => {
     } catch (error) {
         console.error("Error during cleanup job:", error);
     }
-});
+}
+
+// Run immediately when server starts
+removeUnverifiedUsers();
+
+// Schedule to run every day at midnight
+cron.schedule("0 0 * * *", removeUnverifiedUsers);
