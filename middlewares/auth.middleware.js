@@ -7,7 +7,7 @@ const JWT_REFRESH = process.env.JWT_REFRESH_KEY;
 export const generateToken = (user) => {
     const accessToken = jwt.sign(
         {
-            userid: user.id,
+            userId: user.id,
             userName: user.userName,
         },
         JWT_SECRET,
