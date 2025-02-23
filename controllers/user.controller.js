@@ -265,7 +265,7 @@ export const loginUser = async (req, res) => {
 // Logout
 export const logoutUser = async (req, res) => {
     try {
-        const { refreshToken } = req.cookies;
+        const { refreshToken } = req.body;
 
         if (!refreshToken) {
             return res.status(400).json({ message: "No refresh token found" });
@@ -297,15 +297,15 @@ export const logoutUser = async (req, res) => {
             data: { isRevoked: true },
         });
 
-        // Clear the cookie
-        res.clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: process.env.NODE_ENV == "production",
-            sameSite: "Strict",
-            partitioned: true,
-        });
+        // Clear the tokens(send empty string)
+        const token = {
+            accessToken: "Login again to get the token",
+            refreshToken: "Login again to get the token",
+        };
 
-        return res.status(200).json({ message: "Logged out successfully" });
+        return res
+            .status(200)
+            .json({ message: "Logged out successfully", token });
     } catch (error) {
         console.log(`Error while Logging out: ${error}`);
         return res.status(500).json({ message: "Internal server error" });
@@ -363,85 +363,5 @@ export const findUser = async (req, res) => {
     } catch (error) {
         console.log(`Error while finding user \n${error}`);
         res.status(500).json({ message: "Internal server error" });
-    }
-};
-
-// Check authentication token validity
-export const authAccessToken = async (req, res) => {
-    try {
-        // const { refreshToken } = req.cookies;
-        const refreshToken = req.body.refreshToken;
-        const authHeader = req.headers.authorization || "";
-
-        const accessToken = authHeader.startsWith("Bearer ")
-            ? authHeader.split(" ")[1]
-            : null;
-        if (!accessToken) {
-            return res
-                .status(401)
-                .json({ message: "Authentication token required" });
-        }
-
-        //Check if access token is still valid
-        if (accessToken) {
-            try {
-                jwt.verify(accessToken, process.env.JWT_SECRET_KEY);
-                return res
-                    .status(200)
-                    .json({ message: "Access token is still valid" });
-            } catch (error) {
-                // Access token is invalid or expired, proceed to refresh token
-            }
-        }
-
-        // Refresh token validation
-        if (!refreshToken) {
-            return res
-                .status(400)
-                .json({ message: "No refresh token provided" });
-        }
-
-        let decoded;
-        try {
-            decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY);
-        } catch (err) {
-            return res
-                .status(403)
-                .json({ message: "Refresh token expired or invalid" });
-        }
-
-        // Find refresh token in DB
-        const tokenRecord = await prismaPostgres.refreshToken.findFirst({
-            where: {
-                userid: decoded.userId,
-                isRevoked: false, // Ensure token is not revoked
-            },
-        });
-
-        if (!tokenRecord) {
-            return res
-                .status(403)
-                .json({ message: "Invalid refresh token, Log in again" });
-        }
-
-        // Generate a new access token
-        const user = await prismaPostgres.user.findUnique({
-            where: { id: decoded.userId },
-        });
-
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-
-        const newAccessToken = jwt.sign(
-            { userid: user.id },
-            process.env.JWT_SECRET_KEY,
-            { expiresIn: "30m" } // Access token expiration
-        );
-
-        return res.status(200).json({ accessToken: newAccessToken });
-    } catch (error) {
-        console.error("Error refreshing access token:", error);
-        return res.status(500).json({ message: "Internal server error" });
     }
 };

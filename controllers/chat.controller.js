@@ -40,7 +40,7 @@ export const accessChat = async (req, res) => {
         const chatData = {
             chatName: "sender",
             isGroup: false,
-            users: [req.user.userId, user.id],
+            users: [req.user.userid, user.id],
         };
 
         const createdChat = await Chat.create(chatData);
@@ -57,16 +57,21 @@ export const fetchChats = async (req, res) => {
     try {
         // Fetch chats where the current user is a participant
         const chats = await Chat.find({
-            users: { $elemMatch: { $eq: req.user.userId } },
+            users: { $elemMatch: { $eq: req.user.userid } },
         }).populate("latestMessage");
 
         if (!chats || chats.length === 0) {
             return res.status(200).json({ message: "No chats found." });
         }
 
-        // Extract unique user IDs from chats
+        // Extract unique user IDs from chats and include current user
         const userIds = [
-            ...new Set(chats.flatMap((chat) => chat.users)), // Flatten and remove duplicates
+            ...new Set([
+                req.user.userid, // Add current user ID
+                ...chats
+                    .flatMap((chat) => chat.users)
+                    .filter((id) => id != null),
+            ]),
         ];
 
         // Fetch user details from PostgreSQL
@@ -77,7 +82,7 @@ export const fetchChats = async (req, res) => {
                 email: true,
                 username: true,
                 name: true,
-                avatarUrl: true, // Include only necessary fields
+                avatarUrl: true,
             },
         });
 
@@ -89,7 +94,9 @@ export const fetchChats = async (req, res) => {
             _id: chat._id,
             chatName: chat.chatName,
             isGroup: chat.isGroup,
-            users: chat.users.map((userId) => userMap.get(userId) || userId),
+            users: chat.users
+                .filter((userId) => userId != null)
+                .map((userId) => userMap.get(userId) || userId),
             latestMessage: chat.latestMessage,
         }));
 
@@ -125,16 +132,16 @@ export const createGroupChat = async (req, res) => {
         var userIds = users.map((user) => user.id);
 
         // Add the current user’s ID to the array
-        userIds.push(req.user.userId);
+        userIds.push(req.user.userid);
 
         const groupChat = await Chat.create({
             chatName: req.body.name,
             isGroup: true,
             users: userIds,
-            groupAdmin: req.user.userId,
+            groupAdmin: req.user.userid,
         });
 
-        return res.status(200).send(groupChat);
+        return res.status(200).send({ groupChat, message: "Group chat created successfully" });
     } catch (error) {
         console.log(`Error while creating group chat: ${error}`);
         return res
@@ -154,7 +161,7 @@ export const updateGroupChat = async (req, res) => {
             return res.status(400).send({ message: "Chat not found" });
         }
 
-        if (chat.groupAdmin !== req.user.userId) {
+        if ((chat.groupAdmin !== req.user.userid) || (!chat.isGroup)) {
             return res.status(403).send({
                 message: "You do not have permission to perform this action",
             });
@@ -206,7 +213,7 @@ export const removeUserFromGroupChat = async (req, res) => {
         }
 
         // Check if the user is the group admin
-        if (chat.groupAdmin.toString() !== req.user.userId.toString()) {
+        if (chat.groupAdmin !== req.user.userid) {
             return res.status(403).send({
                 message: "You do not have permission to perform this action",
             });

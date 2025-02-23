@@ -49,22 +49,11 @@ export const verifyOtp = async (req, res) => {
         await otpRecord.save();
 
         // Update the user as verified in PostgreSQL
-        await prismaPostgres.user.update({
+        const user = await prismaPostgres.user.update({
             where: { id: parseInt(userId) },
             data: { isVerified: true },
         });
 
-        // Generate token after successful OTP verification
-        const user = await prismaPostgres.user.findUnique({
-            where: { id: parseInt(userId) },
-            select: {
-                id: true,
-                email: true,
-                username: true,
-                name: true,
-                avatarUrl: true,
-            },
-        });
         const token = generateToken(user);
 
         res.status(200).json({ message: "OTP verified", token });

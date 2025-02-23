@@ -1,8 +1,7 @@
 import express from "express";
 import upload from "../config/multer.config.js";
-import { authenticateToken } from "../middlewares/auth.middleware.js";
+import { authenticateToken, refreshAccessToken } from "../middlewares/auth.middleware.js";
 import {
-    authAccessToken,
     createUser,
     deleteUser,
     findUser,
@@ -32,8 +31,8 @@ userRouter.post("/logout", authenticateToken, logoutUser);
 // Find users
 userRouter.get("/:username", authenticateToken, findUser);
 
-// Check authentication token validity
-userRouter.post("/authenticate-token", authAccessToken);
+// Refresh access token
+userRouter.post("/refresh-token", refreshAccessToken);
 
 // Verify otp
 userRouter.post("/verifyotp", verifyOtp);
