@@ -1,6 +1,7 @@
 import prismaPostgres from "../config/prismaPostgres.config.js";
+import Message from "../models/message.model.js";
 
-// Get multiple users from username
+// Get multiple users from username array
 export const getUsersByUsernames = async (usernames) => {
     try {
         const users = await prismaPostgres.user.findMany({
@@ -20,7 +21,7 @@ export const getUsersByUsernames = async (usernames) => {
 // Get single user by username
 export const getUserByUsername = async (username) => {
     try {
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: { username },
         });
 
@@ -34,8 +35,8 @@ export const getUserByUsername = async (username) => {
     }
 };
 
-// Populate chat users
-export const populateChatUsers = async (chat) => {
+// Populate chat with users
+export const populateChat = async (chat) => {
     try {
         const chatObj = chat.toObject ? chat.toObject() : chat;
         const userIds = [...new Set(chatObj.users)];
@@ -68,44 +69,38 @@ export const populateChatUsers = async (chat) => {
 
         return chatObj;
     } catch (error) {
-        console.log(`Error populating chat users: ${error}`);
+        console.log(`Error populating chat with users: ${error}`);
     }
 };
 
-// Populate message users
-export const populateMessageUsers = async (message) => {
+// Populate message with sender, chat and chat.users
+export const populateMessage = async (message) => {
     try {
-        const messageObj = message.toObject ? message.toObject() : message;
-        const userIds = [...new Set(messageObj.users)];
-
-        const users = await prismaPostgres.user.findMany({
-            where: { id: { in: userIds } },
+        const user = await prismaPostgres.user.findUnique({
+            where: { id: message.sender },
             select: {
                 id: true,
-                email: true,
                 username: true,
+                email: true,
                 name: true,
                 avatarUrl: true,
             },
         });
 
-        // Create a map for quick user lookup with default values for missing users
-        const userMap = new Map(users.map((user) => [user.id, user]));
+        // First populate the chat
+        const populatedMessage = await Message.findById(message._id)
+            .populate("chat")
+            .lean();
 
-        // Replace user IDs with user objects or default values if user not found
-        chatObj.users = chatObj.users.map(
-            (userId) =>
-                userMap.get(userId) || {
-                    id: userId,
-                    email: "chirp.user@email.com",
-                    username: "chirpuser",
-                    name: "Chirp User",
-                    avatarUrl: null,
-                }
-        );
+        // Now populate the users in the chat
+        const chatObj = await populateChat(populatedMessage.chat);
+        populatedMessage.chat = chatObj;
 
-        return chatObj;
+        // Add the sender's user information
+        populatedMessage.sender = user;
+
+        return populatedMessage;
     } catch (error) {
-        console.log(`Error populating chat users: ${error}`);
+        console.log(`Error populating message with sender, chat and users: ${error}`);
     }
 };

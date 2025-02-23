@@ -1,6 +1,8 @@
-import prismaPostgres from "../config/prismaPostgres.config.js"; // Prisma
+import prismaPostgres from "../config/prismaPostgres.config.js";
 import Chat from "../models/chat.model.js";
-import Message from "../models/message.model.js"; //Mongodb
+import Message from "../models/message.model.js";
+import { setMessageRedis } from "../utility/redisCache.js";
+import { populateMessage } from "../utility/userUtils.js";
 
 // Send message
 export const sendMessage = async (req, res) => {
@@ -39,12 +41,6 @@ export const sendMessage = async (req, res) => {
                 .json({ message: "You are blocked by this user" });
         }
 
-        // Fetch sender details from PostgreSQL
-        const sender = await prismaPostgres.user.findUnique({
-            where: { id: senderId },
-            select: { id: true, username: true, email: true, avatarUrl: true },
-        });
-
         // Create a new message in MongoDB
         var message = await Message.create({
             sender: senderId,
@@ -52,19 +48,12 @@ export const sendMessage = async (req, res) => {
             chat: chatId,
         });
 
-        
+        // Populate chat details
+        const filteredMessage = await populateMessage(message);
+
+        await setMessageRedis(filteredMessage);
         // Update latest message in chat
         await Chat.findByIdAndUpdate(chatId, { latestMessage: message });
-        
-        // Remove unnecessary fields before sending the response
-        var filteredMessage = {
-            _id: message._id,
-            sender: sender, // Attach sender details instead of just senderId
-            content: message.content,
-            chat: message.chat._id,
-        };
-        // Populate chat details
-        filteredMessage = await message.populate("chat");
 
         return res.status(201).json(filteredMessage);
     } catch (error) {
@@ -139,7 +128,7 @@ export const editMessage = async (req, res) => {
         );
 
         // Populate chat details
-        updatedMessage = await updatedMessage.populate("chat");
+        updatedMessage = await populateMessage(updatedMessage);
 
         // Fetch sender details from PostgreSQL
         const sender = await prismaPostgres.user.findUnique({
@@ -147,18 +136,13 @@ export const editMessage = async (req, res) => {
             select: { id: true, username: true, email: true, avatarUrl: true },
         });
 
-        // Update latest message in chat if applicable
+        // Update latest message in chat
         await Chat.findByIdAndUpdate(updatedMessage.chat._id, {
             latestMessage: updatedMessage,
         });
 
-        // Remove unnecessary fields before sending the response
-        const filteredMessage = {
-            _id: updatedMessage._id,
-            sender: sender, // Attach sender details instead of just senderId
-            content: updatedMessage.content,
-            chat: updatedMessage.chat._id,
-        };
+        const filteredMessage = await populateMessage(updatedMessage);
+        await setMessageRedis(filteredMessage);
 
         return res.status(201).json(filteredMessage);
     } catch (error) {
@@ -188,11 +172,11 @@ export const deleteMessage = async (req, res) => {
                 .json({ message: "Could not perform this action" });
         }
 
-        var deletedMessage = await Message.findByIdAndDelete(messageId);
+        await Message.findByIdAndDelete(messageId);
 
         return res
             .status(201)
-            .send({ message: "Message deleted successfully", deletedMessage });
+            .send({ message: "Message deleted successfully" });
     } catch (error) {
         console.log(`Error while deleting message: ${error}`);
         return res.status(500).json({ message: "Failed to delete message." });

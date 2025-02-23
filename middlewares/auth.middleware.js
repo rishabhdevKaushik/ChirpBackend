@@ -7,7 +7,7 @@ const JWT_REFRESH = process.env.JWT_REFRESH_KEY;
 export const generateToken = (user) => {
     const accessToken = jwt.sign(
         {
-            userId: user.id,
+            userid: user.id,
             userName: user.userName,
         },
         JWT_SECRET,
@@ -104,7 +104,7 @@ export const refreshAccessToken = async (req, res) => {
         }
 
         const newAccessToken = jwt.sign(
-            { userid: user.id },
+            { userId: user.id },
             process.env.JWT_SECRET_KEY,
             { expiresIn: "30m" } // Access token expiration
         );

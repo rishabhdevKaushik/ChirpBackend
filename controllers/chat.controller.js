@@ -1,15 +1,7 @@
-import cloudinary from "../config/cloudinary.config.js";
-import removeFile from "../utility/removeFile.js";
-import { io } from "../app.js"; // Import Socket.IO instance
-
-import prismaPostgres from "../config/prismaPostgres.config.js"; // PostgreSQL client
-
-// For MongoDB
+import prismaPostgres from "../config/prismaPostgres.config.js";
 import Chat from "../models/chat.model.js";
-import {
-    getUsersByUsernames,
-    populateChatUsers,
-} from "../utility/userUtils.js";
+import { getUsersByUsernames, populateChat } from "../utility/userUtils.js";
+import { setChatRedis } from "../utility/redisCache.js";
 
 // Access Chat - creates new if doesn't exist or returns previous
 export const accessChat = async (req, res) => {
@@ -36,9 +28,9 @@ export const accessChat = async (req, res) => {
         }).populate("latestMessage");
 
         if (chat) {
-            const populatedChat = await populateChatUsers(
+            const populatedChat = await populateChat(
                 chat,
-                req.user.userId
+                parseInt(req.user.userId)
             );
             return res.status(200).json(populatedChat);
         }
@@ -51,7 +43,8 @@ export const accessChat = async (req, res) => {
         };
 
         const createdChat = await Chat.create(chatData);
-        const populatedChat = await populateChatUsers(createdChat);
+        const populatedChat = await populateChat(createdChat);
+        await setChatRedis(populatedChat);
 
         return res.status(201).json(populatedChat);
     } catch (error) {
@@ -74,7 +67,7 @@ export const fetchChats = async (req, res) => {
 
         // Populate users for each chat using the existing utility function
         const populatedChats = await Promise.all(
-            chats.map((chat) => populateChatUsers(chat))
+            chats.map((chat) => populateChat(chat))
         );
 
         return res.status(200).json(populatedChats);
@@ -109,7 +102,7 @@ export const createGroupChat = async (req, res) => {
         var userIds = users.map((user) => user.id);
 
         // Add the current user's ID to the array
-        userIds.push(req.user.userId);
+        userIds.push(parseInt(req.user.userId));
 
         const groupChat = await Chat.create({
             chatName: req.body.name,
@@ -118,7 +111,7 @@ export const createGroupChat = async (req, res) => {
             groupAdmin: req.user.userId,
         });
 
-        const populatedGroupChat = await populateChatUsers(groupChat);
+        const populatedGroupChat = await populateChat(groupChat);
 
         return res.status(200).send({
             chat: populatedGroupChat,
@@ -175,7 +168,8 @@ export const updateGroupChat = async (req, res) => {
                 .send({ message: "Could not update group chat" });
         }
 
-        const populatedUpdatedChat = await populateChatUsers(updatedChat);
+        const populatedUpdatedChat = await populateChat(updatedChat);
+        await setChatRedis(populatedUpdatedChat);
 
         return res.status(200).send(populatedUpdatedChat);
     } catch (error) {
@@ -220,7 +214,8 @@ export const removeUserFromGroupChat = async (req, res) => {
 
         const updatedChat = await chat.save({ new: true });
         // Populate the users in the updated chat
-        const populatedChat = await populateChatUsers(updatedChat);
+        const populatedChat = await populateChat(updatedChat);
+        await setChatRedis(populatedChat);
 
         return res.status(200).json({
             message: "User removed successfully.",
