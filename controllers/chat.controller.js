@@ -6,7 +6,10 @@ import prismaPostgres from "../config/prismaPostgres.config.js"; // PostgreSQL c
 
 // For MongoDB
 import Chat from "../models/chat.model.js";
-import { getUsersByUsernames } from "../utility/userUtils.js";
+import {
+    getUsersByUsernames,
+    populateChatUsers,
+} from "../utility/userUtils.js";
 
 // Access Chat - creates new if doesn't exist or returns previous
 export const accessChat = async (req, res) => {
@@ -33,19 +36,24 @@ export const accessChat = async (req, res) => {
         }).populate("latestMessage");
 
         if (chat) {
-            return res.status(200).json(chat);
+            const populatedChat = await populateChatUsers(
+                chat,
+                req.user.userId
+            );
+            return res.status(200).json(populatedChat);
         }
 
         // Create new chat if not found
         const chatData = {
             chatName: "sender",
             isGroup: false,
-            users: [req.user.userid, user.id],
+            users: [req.user.userId, user.id],
         };
 
         const createdChat = await Chat.create(chatData);
+        const populatedChat = await populateChatUsers(createdChat);
 
-        return res.status(201).json(createdChat);
+        return res.status(201).json(populatedChat);
     } catch (error) {
         console.error("Error accessing chat:", error);
         return res.status(500).json({ message: "Failed to access chat" });
@@ -57,50 +65,19 @@ export const fetchChats = async (req, res) => {
     try {
         // Fetch chats where the current user is a participant
         const chats = await Chat.find({
-            users: { $elemMatch: { $eq: req.user.userid } },
+            users: { $elemMatch: { $eq: req.user.userId } },
         }).populate("latestMessage");
 
         if (!chats || chats.length === 0) {
             return res.status(200).json({ message: "No chats found." });
         }
 
-        // Extract unique user IDs from chats and include current user
-        const userIds = [
-            ...new Set([
-                req.user.userid, // Add current user ID
-                ...chats
-                    .flatMap((chat) => chat.users)
-                    .filter((id) => id != null),
-            ]),
-        ];
+        // Populate users for each chat using the existing utility function
+        const populatedChats = await Promise.all(
+            chats.map((chat) => populateChatUsers(chat))
+        );
 
-        // Fetch user details from PostgreSQL
-        const usersFromPostgres = await prismaPostgres.user.findMany({
-            where: { id: { in: userIds } },
-            select: {
-                id: true,
-                email: true,
-                username: true,
-                name: true,
-                avatarUrl: true,
-            },
-        });
-
-        // Convert user list to a map for quick lookup
-        const userMap = new Map(usersFromPostgres.map((u) => [u.id, u]));
-
-        // Remove unnecessary fields from chat response
-        const sanitizedChats = chats.map((chat) => ({
-            _id: chat._id,
-            chatName: chat.chatName,
-            isGroup: chat.isGroup,
-            users: chat.users
-                .filter((userId) => userId != null)
-                .map((userId) => userMap.get(userId) || userId),
-            latestMessage: chat.latestMessage,
-        }));
-
-        return res.status(200).json(sanitizedChats);
+        return res.status(200).json(populatedChats);
     } catch (error) {
         console.error("Error fetching chats:", error);
         return res.status(500).json({ message: "Failed to fetch chats." });
@@ -131,17 +108,22 @@ export const createGroupChat = async (req, res) => {
         // Convert the list of users to an array of user IDs
         var userIds = users.map((user) => user.id);
 
-        // Add the current user’s ID to the array
-        userIds.push(req.user.userid);
+        // Add the current user's ID to the array
+        userIds.push(req.user.userId);
 
         const groupChat = await Chat.create({
             chatName: req.body.name,
             isGroup: true,
             users: userIds,
-            groupAdmin: req.user.userid,
+            groupAdmin: req.user.userId,
         });
 
-        return res.status(200).send({ groupChat, message: "Group chat created successfully" });
+        const populatedGroupChat = await populateChatUsers(groupChat);
+
+        return res.status(200).send({
+            chat: populatedGroupChat,
+            message: "Group chat created successfully",
+        });
     } catch (error) {
         console.log(`Error while creating group chat: ${error}`);
         return res
@@ -161,7 +143,7 @@ export const updateGroupChat = async (req, res) => {
             return res.status(400).send({ message: "Chat not found" });
         }
 
-        if ((chat.groupAdmin !== req.user.userid) || (!chat.isGroup)) {
+        if (chat.groupAdmin !== req.user.userId || !chat.isGroup) {
             return res.status(403).send({
                 message: "You do not have permission to perform this action",
             });
@@ -193,7 +175,9 @@ export const updateGroupChat = async (req, res) => {
                 .send({ message: "Could not update group chat" });
         }
 
-        return res.status(200).send(updatedChat);
+        const populatedUpdatedChat = await populateChatUsers(updatedChat);
+
+        return res.status(200).send(populatedUpdatedChat);
     } catch (error) {
         console.log(`Error while updating group chat: ${error}`);
         return res.status(500).json({ message: "Failed update group chat." });
@@ -203,48 +187,44 @@ export const updateGroupChat = async (req, res) => {
 // Remove Users from Group Chat
 export const removeUserFromGroupChat = async (req, res) => {
     try {
-        const { chatId } = req.params; // Extract chatId from URL params
-        const { usernameToRemove } = req.body; // Get username to remove from the request body
+        const { chatId } = req.params;
+        const { usernameToRemove } = req.body;
 
-        // Fetch the group chat by ID
         const chat = await Chat.findById(chatId);
         if (!chat) {
             return res.status(400).send({ message: "Chat not found" });
         }
 
-        // Check if the user is the group admin
-        if (chat.groupAdmin !== req.user.userid) {
+        if (chat.groupAdmin !== req.user.userId) {
             return res.status(403).send({
                 message: "You do not have permission to perform this action",
             });
         }
 
-        // Fetch the user(s) to remove based on the username
-        const usersToRemove = await getUsersByUsernames([usernameToRemove]); // You can handle multiple usernames as well
+        const usersToRemove = await getUsersByUsernames([usernameToRemove]);
         if (usersToRemove.length === 0) {
             return res.status(400).send({ message: "User not found" });
         }
 
         const userIdsToRemove = usersToRemove.map((user) => user.id);
 
-        // Remove the user from the chat's users list
         chat.users = chat.users.filter(
             (userId) => !userIdsToRemove.includes(userId)
         );
 
-        // Prevent admin from removing themselves
         if (userIdsToRemove.includes(chat.groupAdmin)) {
             return res.status(400).send({
                 message: "Admin cannot remove themselves from the group",
             });
         }
 
-        // Save the updated chat
         const updatedChat = await chat.save({ new: true });
+        // Populate the users in the updated chat
+        const populatedChat = await populateChatUsers(updatedChat);
 
         return res.status(200).json({
             message: "User removed successfully.",
-            chat: updatedChat,
+            chat: populatedChat,
         });
     } catch (error) {
         console.log(`Error while removeing user from: ${error}`);

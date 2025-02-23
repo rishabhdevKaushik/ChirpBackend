@@ -30,8 +30,15 @@ export const generateAndSendOtp = async (userId, recipientEmail) => {
 
         const mailOptions = {
             to: recipientEmail,
-            subject: "Verify Email id for Chirp",
-            html: `<h3>Enter <h3><b>${otpCode}</h3> in website to verify your email.</b></h3><br><p>This code <b>expires in 15 minutes</b></p>`,
+            subject: "Verify Email for Chirp",
+            html: `
+                <div style="font-family: Arial, sans-serif; text-align: center;">
+                    <p>Your verification code is:</p>
+                    <h1 style="font-size: 36px; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">${otpCode}</h1>
+                    <p>Enter this code on the website to verify your email.</p>
+                    <p style="color: #ff4444;"><strong>This code expires in 15 minutes</strong></p>
+                </div>
+            `,
         };
         // Send the OTP via email
         await transporter.sendMail(mailOptions);

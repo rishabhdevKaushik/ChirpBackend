@@ -13,6 +13,11 @@ const messageModel = mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Chat",
         },
+        createdAt: {
+            type: Date,
+            default: Date.now,
+            expires: 86400, // 24 hours in seconds
+        },
     },
     {
         timestamps: true,
