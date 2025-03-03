@@ -2,10 +2,12 @@ import { Server } from "socket.io";
 import { getMessageRedis } from "./utility/redisCache.js";
 
 export default function initSocketIO(httpServer) {
+    const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",");
+
     const io = new Server(httpServer, {
         pingTimeout: 60000, // disconnect after 60s of inactivity
         cors: {
-            origin: "*",
+            origin: allowedOrigins,
             credentials: true,
             methods: ["GET", "POST", "PUT", "DELETE"],
         },
