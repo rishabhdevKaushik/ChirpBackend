@@ -55,6 +55,17 @@ export const sendMessage = async (req, res) => {
         // Update latest message in chat
         await Chat.findByIdAndUpdate(chatId, { latestMessage: message });
 
+        // Emit to specific chat users
+        const io = req.app.get("io");
+        filteredMessage.chat.users.forEach((user) => {
+            const userId = user.id;
+            if (!userId || userId.toString() === senderId.toString()) {
+                return; // Skip if no user id or if it's the sender
+            }
+
+            io.to(userId.toString()).emit("messageReceived", filteredMessage);
+        });
+
         return res.status(201).json(filteredMessage);
     } catch (error) {
         console.log(`Error while sending message: ${error}`);

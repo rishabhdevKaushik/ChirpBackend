@@ -2,7 +2,7 @@ import cloudinary from "../config/cloudinary.config.js";
 import removeFile from "../utility/removeFile.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../middlewares/auth.middleware.js";
-import jwt from "jsonwebtoken";
+// import jwt from "jsonwebtoken";
 import prismaPostgres from "../config/prismaPostgres.config.js";
 import { generateAndSendOtp } from "../utility/otpService.js";
 
@@ -62,7 +62,7 @@ export const createUser = async (req, res) => {
         });
     } catch (error) {
         console.log(`Error while creating user\n${error}`);
-        res.status(501).json({ status: "User not created" });
+        res.status(501).json({ status: "User not created. Internal server error" });
     }
 };
 
@@ -146,7 +146,7 @@ export const updateUser = async (req, res) => {
         }
     } catch (error) {
         console.log(`Error while Updating user\n${error}`);
-        res.status(501).json({ status: "User not updated" });
+        res.status(501).json({ status: "User not updated. Internal server error" });
     }
 };
 
@@ -181,7 +181,7 @@ export const deleteUser = async (req, res) => {
         }
     } catch (error) {
         console.log(`Error while deleting user\n${error}`);
-        res.status(501).json({ status: "User not deleted" });
+        res.status(501).json({ status: "User not deleted. Internal server error" });
     }
 };
 
@@ -258,7 +258,7 @@ export const loginUser = async (req, res) => {
         return res.status(201).json({ token, currentUser });
     } catch (error) {
         console.log(`Error while logging in: ${error}`);
-        res.status(501).json({ status: "Login failed" });
+        res.status(501).json({ status: "Login failed. Internal server error" });
     }
 };
 
@@ -308,7 +308,7 @@ export const logoutUser = async (req, res) => {
             .json({ message: "Logged out successfully", token });
     } catch (error) {
         console.log(`Error while Logging out: ${error}`);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Error while logging out. Internal server error" });
     }
 };
 
@@ -362,6 +362,6 @@ export const findUser = async (req, res) => {
         });
     } catch (error) {
         console.log(`Error while finding user \n${error}`);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({ message: "Error while finding user. Internal server error" });
     }
 };

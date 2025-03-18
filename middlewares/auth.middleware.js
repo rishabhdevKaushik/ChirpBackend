@@ -34,7 +34,7 @@ export const authenticateToken = (req, res, next) => {
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
-            return res.status(403).json({ message: "Invalid token" });
+            return res.status(401).json({ message: "Invalid token" });
         }
         req.user = user;
         next();
@@ -115,6 +115,6 @@ export const refreshAccessToken = async (req, res) => {
         });
     } catch (error) {
         console.error("Error refreshing access token:", error);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(500).json({ message: "Could not refresh access token. Internal server error" });
     }
 };

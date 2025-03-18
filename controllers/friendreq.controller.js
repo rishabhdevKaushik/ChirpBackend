@@ -56,7 +56,7 @@ export const sendFriendRequest = async (req, res) => {
             .json({ message: "Friend request sent", newFriend });
     } catch (error) {
         console.log(`Error while sending friend request\n${error}`);
-        res.status(500).json({ Error: "Internal server error" });
+        res.status(500).json({ Error: "Error while sending friend request. Internal server error" });
     }
 };
 

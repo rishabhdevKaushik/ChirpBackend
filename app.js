@@ -41,6 +41,9 @@ const httpServer = createServer(app);
 import initSocketIO from "./socketio.js";
 const io = initSocketIO(httpServer);
 
+// Make io instance available throughout the app
+app.set("io", io);
+
 httpServer.listen(PORT, () => {
     // console.log(`Server is running on port ${PORT}`);
 });
