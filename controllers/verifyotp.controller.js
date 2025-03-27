@@ -9,7 +9,7 @@ export const verifyOtp = async (req, res) => {
         const userId = req.cookies.tempUserId;
         if (!userId) {
             return res.status(400).json({
-                message: "Verification token missing. Please sign up again.",
+                message: "Cookie missing. Please sign up again.",
             });
         }
         const { otp } = req.body;
