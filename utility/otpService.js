@@ -12,17 +12,18 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-export const generateAndSendOtp = async (userId, recipientEmail) => {
+export const generateAndSendOtp = async (hashedUserId, recipientEmail) => {
     try {
-        // Generate a random 6-digit OTP (you could use a library for better randomness)
+        // Generate a random 6-digit OTP 
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
         // Hash the OTP before storing it
         const hashedOtp = await bcrypt.hash(otpCode, 10);
 
-        // Store OTP in MongoDB
+        // Store OTP in MongoDB 
         await OTP.create({
-            userId,
+            userId: hashedUserId,
+            email: recipientEmail,
             otp: hashedOtp,
             numberOfAttempts: 0,
             isUsed: false,

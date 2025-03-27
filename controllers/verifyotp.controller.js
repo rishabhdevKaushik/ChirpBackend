@@ -5,18 +5,16 @@ import { generateToken } from "../middlewares/auth.middleware.js";
 
 export const verifyOtp = async (req, res) => {
     try {
-        // Retrieve userId from the HTTP-only cookie instead of request body
-        const userId = req.cookies.tempUserId;
-        if (!userId) {
+        const { tempUserId, otp } = req.body;
+        if (!tempUserId || !otp) {
             return res.status(400).json({
-                message: "Cookie missing. Please sign up again.",
+                message: "tempUserId or otp missing",
             });
         }
-        const { otp } = req.body;
 
-        // For example, assume identifier is the user id:
+        // Find OTP record
         const otpRecord = await OTP.findOne({
-            userId,
+            userId: tempUserId,
             isUsed: false,
         }).sort({ createdAt: -1 });
         if (!otpRecord) {
@@ -48,9 +46,9 @@ export const verifyOtp = async (req, res) => {
         otpRecord.isUsed = true;
         await otpRecord.save();
 
-        // Update the user as verified in PostgreSQL
+        // Update the user as verified in PostgreSQL using email
         const user = await prismaPostgres.user.update({
-            where: { id: parseInt(userId) },
+            where: { email: otpRecord.email },
             data: { isVerified: true },
         });
 

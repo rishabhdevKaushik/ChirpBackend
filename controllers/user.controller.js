@@ -44,25 +44,22 @@ export const createUser = async (req, res) => {
             removeFile(avatarPath);
         }
 
+        // Encrypt the user ID before sending
+        const encryptedUserId = await bcrypt.hash(user.id.toString(), 10);
+
         // Generate and send OTP
-        await generateAndSendOtp(user.id, email); // Pass user id and email
+        await generateAndSendOtp(encryptedUserId, email); // Pass user id and email
 
-        // Set cookie with the user ID for OTP verification (expires in 15 minutes)
-        res.cookie("tempUserId", user.id, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV == "production", // use secure cookies in production
-            sameSite: "Lax",
-            maxAge: 15 * 60 * 1000, // 15 minutes
-            partitioned: true,
-        });
 
-        // Respond with a message to verify OTP; do not generate token yet.
         res.status(201).json({
             message: "User created. Please verify the OTP sent to your email.",
+            tempUserId: encryptedUserId,
         });
     } catch (error) {
         console.log(`Error while creating user\n${error}`);
-        res.status(501).json({ status: "User not created. Internal server error" });
+        res.status(501).json({
+            status: "User not created. Internal server error",
+        });
     }
 };
 
@@ -146,7 +143,9 @@ export const updateUser = async (req, res) => {
         }
     } catch (error) {
         console.log(`Error while Updating user\n${error}`);
-        res.status(501).json({ status: "User not updated. Internal server error" });
+        res.status(501).json({
+            status: "User not updated. Internal server error",
+        });
     }
 };
 
@@ -181,7 +180,9 @@ export const deleteUser = async (req, res) => {
         }
     } catch (error) {
         console.log(`Error while deleting user\n${error}`);
-        res.status(501).json({ status: "User not deleted. Internal server error" });
+        res.status(501).json({
+            status: "User not deleted. Internal server error",
+        });
     }
 };
 
@@ -212,20 +213,15 @@ export const loginUser = async (req, res) => {
         const isUserVerified = Boolean(user.isVerified);
 
         if (!isUserVerified) {
-            await generateAndSendOtp(user.id, user.email);
+            // Encrypt the user ID before sending
+            const encryptedUserId = await bcrypt.hash(user.id.toString(), 10);
+            await generateAndSendOtp(encryptedUserId, user.email);
 
-            // Set an HTTP-only cookie with the user ID for OTP verification (expires in 15 minutes)
-            res.cookie("tempUserId", user.id, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV == "production", // use secure cookies in production
-                sameSite: "Lax",
-                maxAge: 15 * 60 * 1000, // 15 minutes
-                partitioned: true,
-            });
 
             return res.status(409).send({
                 message:
                     "User not verified. Otp is sent to email, verify first",
+                tempUserId: encryptedUserId,
             });
         }
 
@@ -308,7 +304,9 @@ export const logoutUser = async (req, res) => {
             .json({ message: "Logged out successfully", token });
     } catch (error) {
         console.log(`Error while Logging out: ${error}`);
-        return res.status(500).json({ message: "Error while logging out. Internal server error" });
+        return res.status(500).json({
+            message: "Error while logging out. Internal server error",
+        });
     }
 };
 
@@ -362,6 +360,8 @@ export const findUser = async (req, res) => {
         });
     } catch (error) {
         console.log(`Error while finding user \n${error}`);
-        res.status(500).json({ message: "Error while finding user. Internal server error" });
+        res.status(500).json({
+            message: "Error while finding user. Internal server error",
+        });
     }
 };
