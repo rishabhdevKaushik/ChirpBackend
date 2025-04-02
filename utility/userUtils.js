@@ -98,6 +98,7 @@ export const populateMessage = async (message) => {
 
         // Add the sender's user information
         populatedMessage.sender = user;
+        
 
         return populatedMessage;
     } catch (error) {

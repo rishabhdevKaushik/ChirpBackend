@@ -115,6 +115,8 @@ export const editMessage = async (req, res) => {
     try {
         const { content, messageId } = req.body;
         const senderId = req.user.userId; // Got this from authentication token
+        
+        
 
         if (!messageId || !content) {
             return res.status(400).json({
@@ -141,21 +143,14 @@ export const editMessage = async (req, res) => {
         // Populate chat details
         updatedMessage = await populateMessage(updatedMessage);
 
-        // Fetch sender details from PostgreSQL
-        const sender = await prismaPostgres.user.findUnique({
-            where: { id: senderId },
-            select: { id: true, username: true, email: true, avatarUrl: true },
-        });
-
         // Update latest message in chat
         await Chat.findByIdAndUpdate(updatedMessage.chat._id, {
             latestMessage: updatedMessage,
         });
 
-        const filteredMessage = await populateMessage(updatedMessage);
-        await setMessageRedis(filteredMessage);
+        await setMessageRedis(updatedMessage);
 
-        return res.status(201).json(filteredMessage);
+        return res.status(201).json(updatedMessage);
     } catch (error) {
         console.log(`Error while editing message: ${error}`);
         return res.status(500).json({ message: "Failed to edit message." });
