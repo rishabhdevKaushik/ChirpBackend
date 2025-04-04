@@ -28,6 +28,7 @@ export default function initSocketIO(httpServer) {
             socket.emit("connected");
         });
 
+        // Moved to send message controller
         // socket.on("newMessage", async (newMessageId) => {
         //     try {
         //         console.log(typeof(newMessageId));
@@ -65,7 +66,7 @@ export default function initSocketIO(httpServer) {
         });
 
         socket.on("disconnect", () => {
-            console.log("Client disconnected");
+            // console.log("Client disconnected");
         });
     });
 

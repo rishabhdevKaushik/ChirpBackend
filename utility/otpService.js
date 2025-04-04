@@ -47,3 +47,41 @@ export const generateAndSendOtp = async (hashedUserId, recipientEmail) => {
         console.log(`Error while sending otp\n${error}`);
     }
 };
+
+export const verifyOtp = async (otp, userId) => {
+    try {
+        // Find OTP record
+        const otpRecord = await OTP.findOne({
+            userId: userId,
+            isUsed: false,
+        }).sort({ createdAt: -1 });
+        if (!otpRecord) {
+            return false;
+        }
+
+        // Check if OTP is still valid
+        const isValid = await bcrypt.compare(otp, otpRecord.otp);
+        if (!isValid) {
+            otpRecord.numberOfAttempts += 1;
+
+            // Check if the maximum number of attempts is reached
+            if (otpRecord.numberOfAttempts > 10) {
+                otpRecord.isUsed = true;
+                await otpRecord.save();
+                return false;
+            }
+
+            await otpRecord.save();
+            return res.status(400).json({ message: "Invalid OTP" });
+        }
+
+        // Mark OTP as used
+        otpRecord.isUsed = true;
+        await otpRecord.save();
+
+        return true;
+    } catch (error) {
+        console.log("OTP verification error:", error);
+        return false;
+    }
+}
