@@ -24,18 +24,11 @@ function generateToken(email) {
 export const forgotPassowrd = async (req, res) => {
     const { email } = req.body;
     try {
-        // Look up the user by email (case-sensitive match here)
-        const user = users.find((u) => u.email === email);
-        if (!user) {
-            return res.status(400).json({ error: "User not found." });
-        }
-
-        // Generate a secure token and compute its SHA-256 hash
         const token = generateToken(email);
-        const tokenHash = await bcrypt.hash(token, 10);
+        // const tokenHash = await bcrypt.hash(token, 10);
 
         // Send the password reset email
-        await generateAndSendPasswordResetLink(user.email, token);
+        await generateAndSendPasswordResetLink(email, token);
         return res.status(201).json({
             message: "Reset link sent to your email.",
         });
