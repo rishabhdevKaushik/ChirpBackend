@@ -53,6 +53,7 @@ export const forgotPassowrd = async (req, res) => {
 export const resetPassword = async (req, res) => {
     try {
         const { resetToken, newPassword } = req.body;
+        
         if (!resetToken || !newPassword) {
             return res
                 .status(400)
