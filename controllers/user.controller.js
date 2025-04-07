@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { generateToken } from "../middlewares/auth.middleware.js";
 // import jwt from "jsonwebtoken";
 import prismaPostgres from "../config/prismaPostgres.config.js";
-import { generateAndSendOtp } from "../utility/otpService.js";
+import { generateAndSendOtp } from "../utility/mailService.js";
 
 // Create user
 export const createUser = async (req, res) => {
@@ -49,7 +49,6 @@ export const createUser = async (req, res) => {
 
         // Generate and send OTP
         await generateAndSendOtp(encryptedUserId, email); // Pass user id and email
-
 
         res.status(201).json({
             message: "User created. Please verify the OTP sent to your email.",
@@ -216,7 +215,6 @@ export const loginUser = async (req, res) => {
             // Encrypt the user ID before sending
             const encryptedUserId = await bcrypt.hash(user.id.toString(), 10);
             await generateAndSendOtp(encryptedUserId, user.email);
-
 
             return res.status(409).send({
                 message:

@@ -10,6 +10,7 @@ import {
     updateUser,
 } from "../controllers/user.controller.js";
 import { verifyOtp } from "../controllers/verifyotp.controller.js";
+import { forgotPassowrd, resetPassword } from "../controllers/forgotPassword.controller.js";
 
 const userRouter = express.Router();
 
@@ -36,5 +37,11 @@ userRouter.post("/refresh-token", refreshAccessToken);
 
 // Verify otp
 userRouter.post("/verifyotp", verifyOtp);
+
+// Forgot password
+userRouter.post("/forgot-password", forgotPassowrd);
+
+// Reset password
+userRouter.post("/reset-password", resetPassword);
 
 export default userRouter;

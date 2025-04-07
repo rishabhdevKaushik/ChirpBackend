@@ -1,4 +1,5 @@
 import OTP from "../models/otp.model.js";
+import ResetToken from "../models/resetToken.model.js";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 
@@ -14,13 +15,13 @@ const transporter = nodemailer.createTransport({
 
 export const generateAndSendOtp = async (hashedUserId, recipientEmail) => {
     try {
-        // Generate a random 6-digit OTP 
+        // Generate a random 6-digit OTP
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
         // Hash the OTP before storing it
         const hashedOtp = await bcrypt.hash(otpCode, 10);
 
-        // Store OTP in MongoDB 
+        // Store OTP in MongoDB
         await OTP.create({
             userId: hashedUserId,
             email: recipientEmail,
@@ -31,7 +32,7 @@ export const generateAndSendOtp = async (hashedUserId, recipientEmail) => {
 
         const mailOptions = {
             to: recipientEmail,
-            subject: "Verify Email for Chirp",
+            subject: "Verify OTP for Chirp",
             html: `
                 <div style="font-family: Arial, sans-serif; text-align: center;">
                     <p>Your verification code is:</p>
@@ -44,11 +45,11 @@ export const generateAndSendOtp = async (hashedUserId, recipientEmail) => {
         // Send the OTP via email
         await transporter.sendMail(mailOptions);
     } catch (error) {
-        console.log(`Error while sending otp\n${error}`);
+        console.log(`Error while mailing otp\n${error}`);
     }
 };
 
-export const verifyOtp = async (otp, userId) => {
+export const checkOtp = async (otp, userId) => {
     try {
         // Find OTP record
         const otpRecord = await OTP.findOne({
@@ -56,7 +57,7 @@ export const verifyOtp = async (otp, userId) => {
             isUsed: false,
         }).sort({ createdAt: -1 });
         if (!otpRecord) {
-            return false;
+            return { status: false, message: "Otp not found" };
         }
 
         // Check if OTP is still valid
@@ -72,16 +73,56 @@ export const verifyOtp = async (otp, userId) => {
             }
 
             await otpRecord.save();
-            return res.status(400).json({ message: "Invalid OTP" });
+            return { status: false, message: "Invalid otp" };
         }
 
         // Mark OTP as used
         otpRecord.isUsed = true;
         await otpRecord.save();
 
-        return true;
+        return { status: true, otpRecord };
     } catch (error) {
-        console.log("OTP verification error:", error);
-        return false;
+        console.log("OTP Checking error:", error);
+        return {
+            status: false,
+            message: "Internal server error",
+            statusCode: 500,
+        };
     }
-}
+};
+
+export const generateAndSendPasswordResetLink = async (
+    recipientEmail,
+    token
+) => {
+    try {
+        // Generate whole resetLink
+        const resetLink = `${process.env.FRONTEND_URL}/ChangePassword?token=${token}`;
+
+        // const hashedToken = await bcrypt.hash(token, 10)
+
+        // Store resetToken in MongoDB
+        await ResetToken.create({
+            email: recipientEmail,
+            token: token
+        });
+
+        const mailOptions = {
+            to: recipientEmail,
+            subject: "Password Reset Request",
+            html: `
+                <div style="font-family: Arial, sans-serif;">
+                    <p>If you requested a password reset, click the following link:</p>
+                    <p">${resetLink}</p>
+                    <p>If you did not request this, please ignore this email.</p>
+                    <p style="color: #ff4444;"><strong>This link expires in 1 hour</strong></p>
+                </div>
+            `,
+        };
+
+        // Send the resetLink via email
+        await transporter.sendMail(mailOptions);
+    } catch (error) {
+        console.log(`Error while mailing resetLink\n${error}`);
+    }
+};

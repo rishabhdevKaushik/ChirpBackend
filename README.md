@@ -13,4 +13,8 @@ For API Documentation, please refer to the [API Documentation](ApiDocumentation.
 3. Create a .env file in the root directory and add the environment variables as shown in the .env.example file
 
 ## How to run this project
-Run the app.js file using `node app.js` command
+Run the app.js file using `node app.js` command. Additionally `npm run dev` can be used for development.
+
+
+## Frontend
+Go to https://github.com/rishabhdevKaushik/ChirpFrontend to get frontend made using React

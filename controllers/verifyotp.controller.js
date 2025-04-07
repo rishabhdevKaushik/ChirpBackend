@@ -1,7 +1,6 @@
-import bcrypt from "bcryptjs";
-import OTP from "../models/otp.model.js";
 import prismaPostgres from "../config/prismaPostgres.config.js";
 import { generateToken } from "../middlewares/auth.middleware.js";
+import { checkOtp } from "../utility/mailService.js";
 
 export const verifyOtp = async (req, res) => {
     try {
@@ -12,13 +11,16 @@ export const verifyOtp = async (req, res) => {
             });
         }
 
-        if (!await verifyOtp(otp, tempUserId)) {
-            return res.status(400).json({ message: "Invalid OTP" });
+        const checkOtp = await checkOtp(otp, tempUserId);
+        if (!checkOtp.status) {
+            return res
+                .status(checkOtp.statusCode || 400)
+                .json({ message: checkOtp.message });
         }
 
         // Update the user as verified in PostgreSQL using email
         const user = await prismaPostgres.user.update({
-            where: { email: otpRecord.email },
+            where: { email: checkOtp.otpRecord.email },
             data: { isVerified: true },
         });
 
