@@ -1,12 +1,14 @@
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { generateAndSendPasswordResetLink } from "../utility/mailService.js";
 import ResetToken from "../models/resetToken.model.js";
 import prismaPostgres from "../config/prismaPostgres.config.js";
+import { generateToken } from "../middlewares/auth.middleware.js";
 
 const JWT_SECRET = process.env.JWT_SECRET_KEY;
 
 // Generate a secure random token
-function generateToken(email) {
+function generateResetToken(email) {
     const accessToken = jwt.sign(
         {
             userEmail: email,
@@ -24,7 +26,16 @@ function generateToken(email) {
 export const forgotPassowrd = async (req, res) => {
     const { email } = req.body;
     try {
-        const token = generateToken(email);
+        const user = await prismaPostgres.user.findUnique({
+            where: {
+                email,
+            },
+        });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const token = generateResetToken(email);
         // const tokenHash = await bcrypt.hash(token, 10);
 
         // Send the password reset email
@@ -55,7 +66,7 @@ export const resetPassword = async (req, res) => {
             return res.status(401).json({ message: "Token not found" });
         }
 
-        const user = await prisma.user.findUnique({
+        const user = await prismaPostgres.user.findUnique({
             where: {
                 email: resetTokenRecord.email,
             },
@@ -73,6 +84,13 @@ export const resetPassword = async (req, res) => {
             },
             data: {
                 password: hashedPassword,
+            },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                username: true,
+                avatarUrl: true,
             },
         });
 
@@ -97,7 +115,8 @@ export const resetPassword = async (req, res) => {
         // Respond with success message
         res.status(200).json({
             message: "Password has been reset successfully.",
-            token
+            token,
+            currentUser: updatedUser,
         });
     } catch (error) {
         console.log("Error while reseting password:", error);
