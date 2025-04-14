@@ -41,7 +41,7 @@ export const sendFriendRequest = async (req, res) => {
             },
         });
         if (existingRelation) {
-            return res.status(400).json({ status: "Could not send request" });
+            return res.status(400).json({ message: "Friend request already sent" });
         }
 
         const newFriend = await prismaPostgres.friend.create({
