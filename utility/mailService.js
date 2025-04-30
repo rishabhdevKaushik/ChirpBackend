@@ -56,11 +56,12 @@ export const checkOtp = async (otp, userId) => {
             userId: userId,
             isUsed: false,
         }).sort({ createdAt: -1 });
+        
         if (!otpRecord) {
             return { status: false, message: "Otp not found" };
         }
 
-        // Check if OTP is still valid
+        // Check if OTP is valid
         const isValid = await bcrypt.compare(otp, otpRecord.otp);
         if (!isValid) {
             otpRecord.numberOfAttempts += 1;
@@ -73,7 +74,7 @@ export const checkOtp = async (otp, userId) => {
             }
 
             await otpRecord.save();
-            return { status: false, message: "Invalid otp" };
+            return { status: false, message: "Wrong otp" };
         }
 
         // Mark OTP as used

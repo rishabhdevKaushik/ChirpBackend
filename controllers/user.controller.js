@@ -220,6 +220,7 @@ export const loginUser = async (req, res) => {
                 message:
                     "User not verified. Otp is sent to email, verify first",
                 tempUserId: encryptedUserId,
+                email: user.email
             });
         }
 

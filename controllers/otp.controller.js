@@ -1,6 +1,6 @@
 import prismaPostgres from "../config/prismaPostgres.config.js";
 import { generateToken } from "../middlewares/auth.middleware.js";
-import { checkOtp } from "../utility/mailService.js";
+import { checkOtp, generateAndSendOtp } from "../utility/mailService.js";
 
 export const verifyOtp = async (req, res) => {
     try {
@@ -11,16 +11,16 @@ export const verifyOtp = async (req, res) => {
             });
         }
 
-        const checkOtp = await checkOtp(otp, tempUserId);
-        if (!checkOtp.status) {
+        const chkOtp = await checkOtp(otp, tempUserId);
+        if (chkOtp.status === false) {
             return res
-                .status(checkOtp.statusCode || 400)
-                .json({ message: checkOtp.message });
+                .status(chkOtp.statusCode || 400)
+                .json({ message: chkOtp.message });
         }
 
         // Update the user as verified in PostgreSQL using email
         const user = await prismaPostgres.user.update({
-            where: { email: checkOtp.otpRecord.email },
+            where: { email: chkOtp.otpRecord.email },
             data: { isVerified: true },
         });
 
@@ -29,6 +29,17 @@ export const verifyOtp = async (req, res) => {
         res.status(200).json({ message: "OTP verified", token });
     } catch (error) {
         console.log("OTP verification error:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const resendOtp = async (req, res) => {
+    try {
+        const { tempUserId, email } = req.body;
+        await generateAndSendOtp(tempUserId, email);
+        res.status(201).json({ message: "OTP sent successfully" });
+    } catch (error) {
+        console.log("OTP resending error:", error);
         res.status(500).json({ message: "Internal server error" });
     }
 };

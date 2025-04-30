@@ -1,6 +1,9 @@
 import express from "express";
 import upload from "../config/multer.config.js";
-import { authenticateToken, refreshAccessToken } from "../middlewares/auth.middleware.js";
+import {
+    authenticateToken,
+    refreshAccessToken,
+} from "../middlewares/auth.middleware.js";
 import {
     createUser,
     deleteUser,
@@ -9,8 +12,11 @@ import {
     logoutUser,
     updateUser,
 } from "../controllers/user.controller.js";
-import { verifyOtp } from "../controllers/verifyotp.controller.js";
-import { forgotPassowrd, resetPassword } from "../controllers/forgotPassword.controller.js";
+import { resendOtp, verifyOtp } from "../controllers/otp.controller.js";
+import {
+    forgotPassowrd,
+    resetPassword,
+} from "../controllers/forgotPassword.controller.js";
 
 const userRouter = express.Router();
 
@@ -37,6 +43,9 @@ userRouter.post("/refresh-token", refreshAccessToken);
 
 // Verify otp
 userRouter.post("/verifyotp", verifyOtp);
+
+// Resend OTP
+userRouter.post("/resend-otp", resendOtp);
 
 // Forgot password
 userRouter.post("/forgot-password", forgotPassowrd);
