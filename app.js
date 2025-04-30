@@ -1,7 +1,7 @@
 import express from "express";
 import "dotenv/config";
 import cors from "cors";
-import cookieParser from "cookie-parser";
+// import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import connectDB from "./config/mongo.config.js";
 import userRouter from "./routes/user.routes.js";
@@ -18,7 +18,7 @@ connectDB(); // Connect to MongoDB
 
 const app = express();
 app.use(express.json());
-app.use(cookieParser());
+// app.use(cookieParser());
 const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",");
 app.use(
     cors({

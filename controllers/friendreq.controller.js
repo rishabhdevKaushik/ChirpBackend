@@ -40,8 +40,42 @@ export const sendFriendRequest = async (req, res) => {
                 ],
             },
         });
+
         if (existingRelation) {
-            return res.status(400).json({ message: "Friend request already sent" });
+            if (
+                existingRelation.status === "BLOCK" &&
+                existingRelation.senderId === senderId
+            ) {
+                return res
+                    .status(400)
+                    .json({ message: "You have blocked this user" });
+            }
+            if (existingRelation.status === "PENDING") {
+                if (existingRelation.senderId === senderId) {
+                    return res
+                        .status(400)
+                        .json({ message: "Friend request already sent" });
+                } else {
+                    // Other user have sent friend req, Accept it.
+                    await prismaPostgres.friend.update({
+                        where: {
+                            senderId_receiverId: {
+                                senderId: receiverId,
+                                receiverId: senderId,
+                            },
+                        },
+                        data: { status: "ACCEPT" },
+                    });
+
+                    return res
+                        .status(200)
+                        .json({ message: "You are now Friends" });
+                }
+            } else {
+                return res
+                    .status(400)
+                    .json({ message: "Could not send Friend req" });
+            }
         }
 
         const newFriend = await prismaPostgres.friend.create({
@@ -52,11 +86,13 @@ export const sendFriendRequest = async (req, res) => {
             },
         });
         return res
-            .status(200)
+            .status(201)
             .json({ message: "Friend request sent", newFriend });
     } catch (error) {
         console.log(`Error while sending friend request\n${error}`);
-        res.status(500).json({ Error: "Error while sending friend request. Internal server error" });
+        res.status(500).json({
+            Error: "Error while sending friend request. Internal server error",
+        });
     }
 };
 

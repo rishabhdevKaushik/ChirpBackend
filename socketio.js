@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import { getMessageRedis } from "./utility/redisCache.js";
+// import { getMessageRedis } from "./utility/redisCache.js";
 
 export default function initSocketIO(httpServer) {
     const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",");
